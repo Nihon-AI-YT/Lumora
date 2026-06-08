@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, streak_count, level')
@@ -15,49 +16,98 @@ export default async function DashboardPage() {
   const name = profile?.full_name?.split(' ')[0] || 'there'
 
   return (
-    <div className="max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-10">
-        <p className="text-indigo-400 text-sm font-medium mb-1">{greeting}</p>
-        <h1 className="text-4xl font-bold text-white mb-2">{name} 👋</h1>
-        <p className="text-gray-400">What do you want to master today?</p>
-      </div>
+    <>
+      <style>{`
+        .stat-card {
+          background: rgba(255,255,255,0.7);
+          backdrop-filter: blur(12px);
+          border: 1px solid #e8e0f0;
+          border-radius: 16px;
+          padding: 20px 24px;
+        }
+        .action-card {
+          background: rgba(255,255,255,0.7);
+          backdrop-filter: blur(12px);
+          border: 1px solid #e8e0f0;
+          border-radius: 16px;
+          padding: 24px;
+          text-decoration: none;
+          display: block;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .action-card:hover {
+          border-color: #a855f7;
+          box-shadow: 0 4px 24px rgba(168,85,247,0.10);
+        }
+        .icon-wrap {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 14px;
+          font-size: 18px;
+        }
+      `}</style>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-10">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Daily Streak</p>
-          <p className="text-3xl font-bold text-orange-400">🔥 {profile?.streak_count || 0}</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Cards to Review</p>
-          <p className="text-3xl font-bold text-indigo-400">0</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">MCQs Done Today</p>
-          <p className="text-3xl font-bold text-green-400">0</p>
-        </div>
-      </div>
+      <div className="max-w-4xl mx-auto">
 
-      {/* Quick Actions */}
-      <h2 className="text-white font-semibold text-lg mb-4">Start Learning</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <a href="/tutor" className="group bg-gray-900 border border-gray-800 hover:border-indigo-500 rounded-2xl p-6 transition cursor-pointer">
-          <div className="text-3xl mb-3">🤖</div>
-          <h3 className="text-white font-bold mb-1">AI Tutor</h3>
-          <p className="text-gray-500 text-sm">Ask anything, get clear explanations instantly</p>
-        </a>
-        <a href="/flashcards" className="group bg-gray-900 border border-gray-800 hover:border-indigo-500 rounded-2xl p-6 transition cursor-pointer">
-          <div className="text-3xl mb-3">🃏</div>
-          <h3 className="text-white font-bold mb-1">Flashcards</h3>
-          <p className="text-gray-500 text-sm">Generate smart cards for any topic</p>
-        </a>
-        <a href="/mcq" className="group bg-gray-900 border border-gray-800 hover:border-indigo-500 rounded-2xl p-6 transition cursor-pointer">
-          <div className="text-3xl mb-3">📝</div>
-          <h3 className="text-white font-bold mb-1">MCQ Practice</h3>
-          <p className="text-gray-500 text-sm">Exam-style questions with instant feedback</p>
-        </a>
+        {/* Header */}
+        <div className="mb-10">
+          <p className="text-sm font-medium mb-1" style={{ color: '#a855f7' }}>{greeting}</p>
+          <h1 className="text-3xl font-bold mb-1" style={{ color: '#1a1a2e' }}>
+            What do you want to <span style={{ fontStyle: 'italic' }}>learn</span>, {name}?
+          </h1>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>Pick up where you left off.</p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-10">
+          <div className="stat-card">
+            <p className="text-xs uppercase tracking-wider mb-3" style={{ color: '#9ca3af' }}>Daily Streak</p>
+            <p className="text-2xl font-bold" style={{ color: '#f59e0b' }}>
+              {profile?.streak_count || 0}
+              <span className="text-base ml-1">🔥</span>
+            </p>
+          </div>
+          <div className="stat-card">
+            <p className="text-xs uppercase tracking-wider mb-3" style={{ color: '#9ca3af' }}>Cards to Review</p>
+            <p className="text-2xl font-bold" style={{ color: '#a855f7' }}>0</p>
+          </div>
+          <div className="stat-card">
+            <p className="text-xs uppercase tracking-wider mb-3" style={{ color: '#9ca3af' }}>MCQs Done Today</p>
+            <p className="text-2xl font-bold" style={{ color: '#10b981' }}>0</p>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9ca3af' }}>Start Learning</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <Link href="/tutor" className="action-card">
+            <div className="icon-wrap" style={{ background: 'rgba(168,85,247,0.10)' }}>
+              ✦
+            </div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>AI Tutor</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Ask anything, get clear explanations instantly</p>
+          </Link>
+          <Link href="/flashcards" className="action-card">
+            <div className="icon-wrap" style={{ background: 'rgba(99,102,241,0.10)' }}>
+              ▦
+            </div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Flashcards</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart cards for any topic</p>
+          </Link>
+          <Link href="/mcq" className="action-card">
+            <div className="icon-wrap" style={{ background: 'rgba(16,185,129,0.10)' }}>
+              ◈
+            </div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>MCQ Practice</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Exam-style questions with instant feedback</p>
+          </Link>
+        </div>
+
       </div>
-    </div>
+    </>
   )
 }
