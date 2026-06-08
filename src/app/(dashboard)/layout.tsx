@@ -53,10 +53,16 @@ export default async function DashboardLayout({
 
           {/* Logo */}
           <div className="flex items-center gap-2 px-3 mb-8">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
-              <span className="text-white font-bold text-sm">L</span>
-            </div>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="8" fill="url(#lg)"/>
+              <defs>
+                <linearGradient id="lg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#a855f7"/>
+                  <stop offset="1" stopColor="#ec4899"/>
+                </linearGradient>
+              </defs>
+              <text x="9" y="23" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="18" fill="white">L</text>
+            </svg>
             <span className="font-bold text-lg" style={{ color: '#1a1a2e' }}>Lumora</span>
           </div>
 
