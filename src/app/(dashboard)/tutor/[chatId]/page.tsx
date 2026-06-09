@@ -8,6 +8,125 @@ interface Message {
   content: string
 }
 
+function renderMarkdown(text: string): string {
+  return text
+    .replace(/^## (.+)$/gm, '<h3 style="font-size:1rem;font-weight:700;color:#1a1a2e;margin:14px 0 6px 0;">$1</h3>')
+    .replace(/^### (.+)$/gm, '<h4 style="font-size:0.9rem;font-weight:600;color:#1a1a2e;margin:10px 0 4px 0;">$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:600;color:#1a1a2e;">$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, (_, expr) => {
+      const formatted = expr
+        .replace(/([a-zA-Z0-9])\^([a-zA-Z0-9]+)/g, '$1<sup>$2</sup>')
+        .replace(/([a-zA-Z0-9])_([a-zA-Z0-9]+)/g, '$1<sub>$2</sub>')
+      return `<code style="background:rgba(168,85,247,0.08);color:#7c3aed;padding:2px 6px;border-radius:4px;font-size:0.9em;">${formatted}</code>`
+    })
+    .replace(/^\d+\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;"><span style="color:#a855f7;font-weight:600;min-width:16px;">•</span><span>$1</span></div>')
+    .replace(/^[-•] (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;"><span style="color:#a855f7;min-width:16px;">•</span><span>$1</span></div>')
+    .replace(/\n\n/g, '<br/>')
+    .replace(/\n/g, '<br/>')
+}
+
+function AIBubble({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false)
+  const [reaction, setReaction] = useState<'up' | 'down' | null>(null)
+  const [showEmoji, setShowEmoji] = useState<'up' | 'down' | null>(null)
+
+  function handleCopy() {
+    // Strip markdown to get clean plain text
+    const plain = content
+      .replace(/^#{1,3} /gm, '')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^\d+\. /gm, '')
+      .replace(/^[-•] /gm, '')
+      .trim()
+    navigator.clipboard.writeText(plain)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleReaction(type: 'up' | 'down') {
+    setReaction(type)
+    setShowEmoji(type)
+    setTimeout(() => setShowEmoji(null), 1200)
+  }
+
+  return (
+    <div style={{ alignSelf: 'flex-start', maxWidth: '82%', position: 'relative' }}>
+      <style>{`
+        @keyframes floatUp {
+          0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+          50% { opacity: 1; transform: translateX(-50%) translateY(-20px) scale(1.3); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.8); }
+        }
+      `}</style>
+      {showEmoji && (
+        <div style={{
+          position: 'absolute',
+          top: '-20px',
+          left: '50%',
+          fontSize: '2rem',
+          animation: 'floatUp 1.2s ease forwards',
+          pointerEvents: 'none',
+          zIndex: 10,
+        }}>
+          {showEmoji === 'up' ? '👍' : '👎'}
+        </div>
+      )}
+      <div
+        className="bubble-ai"
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+      />
+      <div style={{ display: 'flex', gap: '4px', marginTop: '6px', paddingLeft: '4px' }}>
+        <button
+          onClick={handleCopy}
+          style={{
+            background: copied ? 'rgba(16,185,129,0.08)' : 'none',
+            border: 'none', cursor: 'pointer', padding: '4px 8px',
+            borderRadius: '6px',
+            color: copied ? '#10b981' : '#9ca3af',
+            fontSize: '0.75rem', transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: '4px'
+          }}
+          onMouseEnter={e => { if (!copied) { (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'; (e.currentTarget as HTMLElement).style.color = '#a855f7' }}}
+          onMouseLeave={e => { if (!copied) { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = '#9ca3af' }}}
+        >
+          {copied ? '✓ Copied' : '📋 Copy'}
+        </button>
+        <button
+          onClick={() => handleReaction('up')}
+          style={{
+            background: reaction === 'up' ? 'rgba(16,185,129,0.08)' : 'none',
+            border: 'none', cursor: 'pointer', padding: '4px 6px',
+            borderRadius: '6px',
+            color: reaction === 'up' ? '#10b981' : '#9ca3af',
+            fontSize: '0.75rem', transition: 'all 0.15s'
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.08)'; (e.currentTarget as HTMLElement).style.color = '#10b981' }}
+          onMouseLeave={e => { if (reaction !== 'up') { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = '#9ca3af' }}}
+        >
+          👍
+        </button>
+        <button
+          onClick={() => handleReaction('down')}
+          style={{
+            background: reaction === 'down' ? 'rgba(239,68,68,0.08)' : 'none',
+            border: 'none', cursor: 'pointer', padding: '4px 6px',
+            borderRadius: '6px',
+            color: reaction === 'down' ? '#ef4444' : '#9ca3af',
+            fontSize: '0.75rem', transition: 'all 0.15s'
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)'; (e.currentTarget as HTMLElement).style.color = '#ef4444' }}
+          onMouseLeave={e => { if (reaction !== 'down') { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = '#9ca3af' }}}
+        >
+          👎
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>()
   const supabase = createClient()
@@ -96,13 +215,11 @@ export default function ChatPage() {
       const aiMessage: Message = { role: 'assistant', content: data.reply }
       setMessages([...updated, aiMessage])
 
-      // Save both messages to Supabase
       await supabase.from('tutor_messages').insert([
         { chat_id: chatId, role: 'user', content: userMessage.content },
         { chat_id: chatId, role: 'assistant', content: aiMessage.content }
       ])
 
-      // Auto-title after first user message using AI
       const userMsgCount = updated.filter(m => m.role === 'user').length
       if (userMsgCount === 1) {
         const title = await generateTitle(input)
@@ -128,7 +245,7 @@ export default function ChatPage() {
           display: flex;
           flex-direction: column;
           height: calc(100vh - 64px);
-          max-width: 760px;
+          max-width: 780px;
           margin: 0 auto;
         }
         .messages {
@@ -156,19 +273,17 @@ export default function ChatPage() {
           align-self: flex-end;
         }
         .bubble-ai {
-          max-width: 72%;
-          padding: 12px 16px;
+          padding: 14px 18px;
           border-radius: 18px;
           border-bottom-left-radius: 4px;
           font-size: 0.875rem;
-          line-height: 1.6;
+          line-height: 1.5;
           white-space: normal;
-          background: rgba(255,255,255,0.8);
+          background: rgba(255,255,255,0.85);
           border: 1px solid #e8e0f0;
           color: #1a1a2e;
-          align-self: flex-start;
         }
-        .bubble-ai strong { font-weight: 600; color: #1a1a2e; }
+        .bubble-ai strong { font-weight: 600; }
         .bubble-ai em { font-style: italic; }
         .dots-wrap {
           background: rgba(255,255,255,0.8);
@@ -233,12 +348,7 @@ export default function ChatPage() {
             m.role === 'user' ? (
               <div key={i} className="bubble-user">{m.content}</div>
             ) : (
-              <div key={i} className="bubble-ai" dangerouslySetInnerHTML={{
-                __html: m.content
-                  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                  .replace(/\n/g, '<br/>')
-              }} />
+              <AIBubble key={i} content={m.content} />
             )
           ))}
           {loading && (
