@@ -90,6 +90,7 @@ export default function Sidebar({ name, userId }: Props) {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/flashcards', label: 'Flashcards' },
     { href: '/mcq', label: 'MCQ Practice' },
+    { href: '/exam', label: 'Practice Exam' },
     { href: '/review', label: 'Review' },
   ]
 
