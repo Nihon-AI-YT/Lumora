@@ -35,10 +35,11 @@ export default function ExamPage() {
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
   const [pdfName, setPdfName] = useState('')
-const [pdfText, setPdfText] = useState('')
+  const [pdfText, setPdfText] = useState('')
   const [count, setCount] = useState(10)
   const [difficulty, setDifficulty] = useState('medium')
   const [examType, setExamType] = useState('mixed')
+  const [duration, setDuration] = useState(30)
   const [exam, setExam] = useState<Exam | null>(null)
   const [loading, setLoading] = useState(false)
   const [started, setStarted] = useState(false)
@@ -116,32 +117,30 @@ const [pdfText, setPdfText] = useState('')
   }
 
   const handlePDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0]
-  if (!file) return
-  setPdfName(file.name)
-  setError('')
-  setLoading(true)
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await fetch('/api/extract-pdf', {
-      method: 'POST',
-      body: formData
-    })
-    const data = await res.json()
-    if (data.error) throw new Error(data.error)
-    setPdfText(data.text)
-  } catch {
-    setError('Failed to read PDF. Try again.')
-    setPdfName('')
-  } finally {
-    setLoading(false)
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPdfName(file.name)
+    setError('')
+    setLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/extract-pdf', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setPdfText(data.text)
+    } catch {
+      setError('Failed to read PDF. Try again.')
+      setPdfName('')
+    } finally {
+      setLoading(false)
+    }
   }
-}
+
   const startExam = () => {
     setStarted(true)
     setShowPreview(false)
-    setTimeLeft((exam?.duration_minutes || 30) * 60)
+    setTimeLeft(duration * 60)
     setTimerActive(true)
   }
 
@@ -149,9 +148,7 @@ const [pdfText, setPdfText] = useState('')
     if (!exam) return
     let total = 0
     exam.questions.forEach(q => {
-      if (q.type === 'mcq' && answers[q.id] === (q as MCQQuestion).correct) {
-        total += q.marks
-      }
+      if (q.type === 'mcq' && answers[q.id] === (q as MCQQuestion).correct) total += q.marks
     })
     setScore(total)
     setSubmitted(true)
@@ -184,12 +181,13 @@ const [pdfText, setPdfText] = useState('')
         .exam-input {
           background: rgba(255,255,255,0.8);
           border: 1px solid #e8e0f0;
-          border-radius: 12px;
-          padding: 12px 16px;
+          border-radius: 10px;
+          padding: 10px 14px;
           color: #1a1a2e;
           font-size: 0.875rem;
           outline: none;
           transition: border-color 0.15s;
+          width: 100%;
         }
         .exam-input:focus { border-color: #a855f7; }
         .exam-input::placeholder { color: #9ca3af; }
@@ -220,27 +218,63 @@ const [pdfText, setPdfText] = useState('')
           white-space: nowrap;
         }
         .exam-btn-secondary:hover { border-color: #a855f7; color: #9333ea; }
-        .pdf-btn {
-          background: rgba(255,255,255,0.8);
+        .settings-card {
+          background: rgba(255,255,255,0.75);
+          backdrop-filter: blur(12px);
           border: 1px solid #e8e0f0;
-          border-radius: 12px;
-          padding: 12px 16px;
-          color: #6b7280;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: border-color 0.15s;
-          white-space: nowrap;
-          display: flex;
-          align-items: center;
-          gap: 6px;
+          border-radius: 20px;
+          padding: 28px;
+          margin-bottom: 24px;
         }
-        .pdf-btn:hover { border-color: #a855f7; color: #a855f7; }
+        .settings-label {
+          font-size: 0.7rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #9ca3af;
+          margin-bottom: 6px;
+          display: block;
+        }
+        .pdf-upload-zone {
+          border: 2px dashed #e8e0f0;
+display: block;
+          border-radius: 12px;
+          padding: 20px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.15s;
+          background: rgba(168,85,247,0.02);
+        }
+        .pdf-upload-zone:hover {
+          border-color: #a855f7;
+          background: rgba(168,85,247,0.04);
+        }
+        .pdf-upload-zone.has-file {
+          border-color: #a855f7;
+          background: rgba(168,85,247,0.06);
+        }
         .exam-card {
           background: rgba(255,255,255,0.8);
           border: 1px solid #e8e0f0;
           border-radius: 16px;
           padding: 24px;
           margin-bottom: 16px;
+        }
+        .preview-card {
+          background: rgba(255,255,255,0.85);
+          backdrop-filter: blur(12px);
+          border: 1px solid #e8e0f0;
+          border-radius: 20px;
+          padding: 36px 28px;
+          text-align: center;
+          margin-bottom: 24px;
+        }
+        .preview-stat {
+          background: rgba(168,85,247,0.06);
+          border: 1px solid rgba(168,85,247,0.15);
+          border-radius: 14px;
+          padding: 16px 24px;
+          min-width: 90px;
         }
         .opt-btn {
           width: 100%;
@@ -288,8 +322,19 @@ const [pdfText, setPdfText] = useState('')
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 80px 20px;
+          padding: 60px 20px;
           text-align: center;
+        }
+        .empty-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 20px;
+          background: rgba(168,85,247,0.08);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 28px;
+          margin-bottom: 20px;
         }
         .timer-bar {
           position: sticky;
@@ -324,89 +369,160 @@ const [pdfText, setPdfText] = useState('')
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-1" style={{ color: '#1a1a2e' }}>Mock Exam</h1>
-          <p className="text-sm" style={{ color: '#9ca3af' }}>AI-generated exams to test your knowledge</p>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: '#1a1a2e' }}>Practice Exam</h1>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>Configure your exam, upload a PDF, and test yourself under real conditions</p>
         </div>
 
-        {/* Controls */}
+        {/* Settings card */}
         {!started && !showPreview && (
-          <div className="flex flex-col gap-3 mb-8">
-            <div className="flex gap-3">
-              <input type="text" placeholder="Subject — e.g. Physics" value={subject}
-                onChange={e => setSubject(e.target.value)} className="exam-input flex-1" />
-              <input type="text" placeholder="Topic — e.g. Newton's Laws"
-                value={pdfName || topic}
-                onChange={e => { setTopic(e.target.value); setPdfName(''); setPdfText('') }}
-                onKeyDown={e => e.key === 'Enter' && generateExam()}
-                className="exam-input flex-1" />
+          <div className="settings-card">
+
+            {/* Row 1 — Subject + Topic */}
+            <div className="flex gap-3 mb-5">
+              <div className="flex-1">
+                <label className="settings-label">Subject</label>
+                <input type="text" placeholder="e.g. Physics, Japanese" value={subject}
+                  onChange={e => setSubject(e.target.value)} className="exam-input" />
+              </div>
+              <div className="flex-1">
+                <label className="settings-label">Topic</label>
+                <input type="text" placeholder="e.g. Newton's Laws"
+                  value={pdfName || topic}
+                  onChange={e => { setTopic(e.target.value); setPdfName(''); setPdfText('') }}
+                  onKeyDown={e => e.key === 'Enter' && generateExam()}
+                  className="exam-input" />
+              </div>
             </div>
-            <div className="flex gap-3">
-              <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className="exam-input flex-1">
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-              <select value={examType} onChange={e => setExamType(e.target.value)} className="exam-input flex-1">
-                <option value="mixed">Mixed (MCQ + Written)</option>
-                <option value="mcq">MCQ Only</option>
-                <option value="written">Written Only</option>
-              </select>
-              <select value={count} onChange={e => setCount(Number(e.target.value))} className="exam-input">
-                <option value={5}>5 questions</option>
-                <option value={10}>10 questions</option>
-                <option value={15}>15 questions</option>
-                <option value={20}>20 questions</option>
-              </select>
+
+            {/* Row 2 — Difficulty + Type + Questions + Time */}
+            <div className="flex gap-3 mb-5">
+              <div className="flex-1">
+                <label className="settings-label">Difficulty</label>
+                <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className="exam-input">
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="settings-label">Type</label>
+                <select value={examType} onChange={e => setExamType(e.target.value)} className="exam-input">
+                  <option value="mixed">Mixed</option>
+                  <option value="mcq">MCQ Only</option>
+                  <option value="written">Written Only</option>
+                </select>
+              </div>
+              <div>
+                <label className="settings-label">Questions</label>
+                <select value={count} onChange={e => setCount(Number(e.target.value))} className="exam-input">
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                </select>
+              </div>
+              <div>
+                <label className="settings-label">Time</label>
+                <select value={duration} onChange={e => setDuration(Number(e.target.value))} className="exam-input">
+                  <option value={15}>15 min</option>
+                  <option value={30}>30 min</option>
+                  <option value={45}>45 min</option>
+                  <option value={60}>60 min</option>
+                  <option value={90}>90 min</option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => generateExam()} disabled={loading || (!topic && !pdfText)} className="exam-btn flex-1">
-                {loading ? 'Generating exam...' : 'Generate Exam'}
-              </button>
-              <label className="pdf-btn">
-                📄 Upload PDF
+
+            {/* Row 3 — PDF Upload zone */}
+            <div className="mb-5">
+              <label className="settings-label">Upload PDF (optional)</label>
+              <label className={`pdf-upload-zone ${pdfName ? 'has-file' : ''}`}>
                 <input type="file" accept=".pdf" onChange={handlePDF} style={{ display: 'none' }} />
+                {loading && pdfName ? (
+                  <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>Reading {pdfName}...</p>
+                ) : pdfName ? (
+                  <div>
+                    <p style={{ fontSize: '1.5rem', marginBottom: '4px' }}>📄</p>
+                    <p className="text-sm font-semibold" style={{ color: '#a855f7' }}>{pdfName}</p>
+                    <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Click to replace</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ fontSize: '1.5rem', marginBottom: '4px' }}>📂</p>
+                    <p className="text-sm font-semibold" style={{ color: '#6b7280' }}>Click to upload a PDF</p>
+                    <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Exam will be generated from your document</p>
+                  </div>
+                )}
               </label>
             </div>
+
+            {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
+
+            {/* Generate button */}
+            <button
+              onClick={() => generateExam()}
+              disabled={loading || (!topic && !pdfText)}
+              className="exam-btn"
+              style={{ width: '100%', padding: '14px', fontSize: '0.95rem' }}
+            >
+              {loading && !pdfName ? 'Generating exam...' : loading && pdfName ? 'Reading PDF...' : '✦ Generate Exam'}
+            </button>
           </div>
         )}
 
-        {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
-
         {/* Loading */}
-        {loading && (
+        {loading && !pdfName && (
           <div className="empty-state">
-            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>
-              {pdfName ? `Reading ${pdfName}...` : 'Generating your exam with AI...'}
-            </p>
+            <div className="empty-icon" style={{ fontSize: '22px' }}>✦</div>
+            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>Generating your exam with AI...</p>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!started && !showPreview && !loading && !exam && (
+          <div className="empty-state">
+            <div className="empty-icon">📝</div>
+            <p className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Ready when you are</p>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Configure your settings above and hit Generate Exam</p>
           </div>
         )}
 
         {/* Exam preview */}
         {exam && showPreview && !started && !loading && (
-          <div className="exam-card" style={{ textAlign: 'center' }}>
+          <div className="preview-card">
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '16px',
+              background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '24px', margin: '0 auto 16px'
+            }}>📝</div>
             <h2 className="text-xl font-bold mb-2" style={{ color: '#1a1a2e' }}>{exam.title}</h2>
-            <p className="text-sm mb-6" style={{ color: '#9ca3af' }}>
+            <p className="text-sm mb-8" style={{ color: '#9ca3af' }}>
               {exam.subject} · {pdfName || exam.topic.slice(0, 40)}{!pdfName && exam.topic.length > 40 ? '...' : ''} · {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
             </p>
-            <div className="flex justify-center gap-10 mb-8">
-              <div>
-                <p className="text-3xl font-bold" style={{ color: '#a855f7' }}>{exam.questions.length}</p>
+            <div className="flex justify-center gap-4 mb-8">
+              <div className="preview-stat">
+                <p className="text-2xl font-bold" style={{ color: '#a855f7' }}>{exam.questions.length}</p>
                 <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Questions</p>
               </div>
-              <div>
-                <p className="text-3xl font-bold" style={{ color: '#a855f7' }}>{exam.total_marks}</p>
+              <div className="preview-stat">
+                <p className="text-2xl font-bold" style={{ color: '#a855f7' }}>{exam.total_marks}</p>
                 <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Total Marks</p>
               </div>
-              <div>
-                <p className="text-3xl font-bold" style={{ color: '#a855f7' }}>{exam.duration_minutes}</p>
+              <div className="preview-stat">
+                <p className="text-2xl font-bold" style={{ color: '#a855f7' }}>{duration}</p>
                 <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Minutes</p>
+              </div>
+              <div className="preview-stat">
+                <p className="text-2xl font-bold" style={{ color: '#a855f7' }}>{difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</p>
+                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>Difficulty</p>
               </div>
             </div>
             <p className="text-xs mb-6" style={{ color: '#9ca3af' }}>
               ⚠️ Once started, the timer will begin. Complete all questions before time runs out.
             </p>
             <div className="flex gap-3 justify-center">
-              <button onClick={startExam} className="exam-btn">Start Exam</button>
+              <button onClick={startExam} className="exam-btn" style={{ padding: '12px 32px' }}>Start Exam</button>
               <button onClick={() => setShowPreview(false)} className="exam-btn-secondary">Change Settings</button>
             </div>
           </div>
@@ -536,7 +652,6 @@ const [pdfText, setPdfText] = useState('')
                   Submit Exam
                 </button>
               )}
-
               {submitted && (
                 <button onClick={resetExam} className="exam-btn" style={{ width: '100%', padding: '14px' }}>
                   Generate New Exam
