@@ -11,31 +11,64 @@ interface Question {
 export default function MCQPage() {
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
+  const [pdfName, setPdfName] = useState('')
   const [questions, setQuestions] = useState<Question[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [score, setScore] = useState(0)
 
-  const generateQuestions = async () => {
-    if (!subject || !topic) return
+  const generateQuestions = async (overrideTopic?: string, overrideSubject?: string) => {
+    const activeTopic = overrideTopic || topic
+    const activeSubject = overrideSubject || subject || 'General'
+    if (!activeTopic) return
+    setLoading(true)
+    setQuestions([])
+    setSelected([])
+    setSubmitted(false)
+    setScore(0)
+    setError('')
+    try {
+      const res = await fetch('/api/mcq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: activeSubject, topic: activeTopic, count: 5 })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setQuestions(data.questions)
+      setSelected(new Array(data.questions.length).fill(''))
+    } catch {
+      setError('Failed to generate questions. Try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPdfName(file.name)
+    setError('')
     setLoading(true)
     setQuestions([])
     setSelected([])
     setSubmitted(false)
     setScore(0)
     try {
-      const res = await fetch('/api/mcq', {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/extract-pdf', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, topic, count: 5 })
+        body: formData
       })
       const data = await res.json()
-      setQuestions(data.questions)
-      setSelected(new Array(data.questions.length).fill(''))
+      if (data.error) throw new Error(data.error)
+      setTopic(data.text)
+      await generateQuestions(data.text, subject || 'General')
     } catch {
-      alert('Failed to generate questions.')
-    } finally {
+      setError('Failed to read PDF. Try again.')
       setLoading(false)
     }
   }
@@ -76,6 +109,21 @@ export default function MCQPage() {
         }
         .mcq-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .mcq-btn:hover:not(:disabled) { opacity: 0.9; }
+        .pdf-btn {
+          background: rgba(255,255,255,0.8);
+          border: 1px solid #e8e0f0;
+          border-radius: 12px;
+          padding: 12px 16px;
+          color: #6b7280;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: border-color 0.15s;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .pdf-btn:hover { border-color: #a855f7; color: #a855f7; }
         .question-card {
           background: rgba(255,255,255,0.75);
           backdrop-filter: blur(12px);
@@ -167,7 +215,7 @@ export default function MCQPage() {
         </div>
 
         {/* Controls */}
-        <div className="flex gap-3 mb-8">
+        <div className="flex gap-3 mb-3">
           <input
             type="text"
             placeholder="Subject — e.g. Physics"
@@ -179,15 +227,33 @@ export default function MCQPage() {
           <input
             type="text"
             placeholder="Topic — e.g. Newton's Laws"
-            value={topic}
-            onChange={e => setTopic(e.target.value)}
+            value={pdfName || topic}
+            onChange={e => { setTopic(e.target.value); setPdfName('') }}
             onKeyDown={e => e.key === 'Enter' && generateQuestions()}
             className="mcq-input flex-1"
           />
-          <button onClick={generateQuestions} disabled={loading || !subject || !topic} className="mcq-btn">
+          <button onClick={() => generateQuestions()} disabled={loading || !topic} className="mcq-btn">
             {loading ? 'Generating...' : 'Generate'}
           </button>
         </div>
+
+        {/* PDF Upload */}
+        <div className="flex items-center gap-3 mb-8">
+          <label className="pdf-btn">
+            📄 Upload PDF
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handlePDF}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <p className="text-xs" style={{ color: '#9ca3af' }}>
+            Upload a PDF and questions will generate automatically
+          </p>
+        </div>
+
+        {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
 
         {/* Score */}
         {submitted && (
@@ -207,14 +273,16 @@ export default function MCQPage() {
           <div className="empty-state">
             <div className="empty-icon">◈</div>
             <p className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>No questions yet</p>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a subject and topic above, then hit Generate</p>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a subject and topic, or upload a PDF</p>
           </div>
         )}
 
         {loading && (
           <div className="empty-state">
             <div className="empty-icon" style={{ fontSize: '22px' }}>✦</div>
-            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>Generating your questions...</p>
+            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>
+              {pdfName ? `Reading ${pdfName}...` : 'Generating your questions...'}
+            </p>
           </div>
         )}
 

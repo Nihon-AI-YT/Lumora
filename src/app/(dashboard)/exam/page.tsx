@@ -34,6 +34,8 @@ interface Exam {
 export default function ExamPage() {
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
+  const [pdfName, setPdfName] = useState('')
+const [pdfText, setPdfText] = useState('')
   const [count, setCount] = useState(10)
   const [difficulty, setDifficulty] = useState('medium')
   const [examType, setExamType] = useState('mixed')
@@ -46,6 +48,7 @@ export default function ExamPage() {
   const [timeLeft, setTimeLeft] = useState(0)
   const [timerActive, setTimerActive] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!timerActive) return
@@ -83,16 +86,10 @@ export default function ExamPage() {
     return `${m}:${s}`
   }
 
-  const generateExam = async () => {
-    if (!subject || !topic) return
-    if (subject.trim().length < 2 || topic.trim().length < 2) {
-      alert('Please enter a valid subject and topic.')
-      return
-    }
-    if (!/[a-zA-Z]/.test(subject) || !/[a-zA-Z]/.test(topic)) {
-      alert('Subject and topic must contain real words.')
-      return
-    }
+  const generateExam = async (overrideTopic?: string, overrideSubject?: string) => {
+    const activeTopic = overrideTopic || pdfText || topic
+    const activeSubject = overrideSubject || subject || 'General'
+    if (!activeTopic) return
     setLoading(true)
     setExam(null)
     setStarted(false)
@@ -100,23 +97,47 @@ export default function ExamPage() {
     setAnswers({})
     setScore(0)
     setShowPreview(false)
+    setError('')
     try {
       const res = await fetch('/api/exam', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, topic, count, difficulty, examType })
+        body: JSON.stringify({ subject: activeSubject, topic: activeTopic, count, difficulty, examType })
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setExam(data.exam)
       setShowPreview(true)
     } catch {
-      alert('Failed to generate exam. Try again.')
+      setError('Failed to generate exam. Try again.')
     } finally {
       setLoading(false)
     }
   }
 
+  const handlePDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  setPdfName(file.name)
+  setError('')
+  setLoading(true)
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch('/api/extract-pdf', {
+      method: 'POST',
+      body: formData
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+    setPdfText(data.text)
+  } catch {
+    setError('Failed to read PDF. Try again.')
+    setPdfName('')
+  } finally {
+    setLoading(false)
+  }
+}
   const startExam = () => {
     setStarted(true)
     setShowPreview(false)
@@ -146,6 +167,9 @@ export default function ExamPage() {
     setTimeLeft(0)
     setTimerActive(false)
     setShowPreview(false)
+    setPdfName('')
+    setPdfText('')
+    setError('')
   }
 
   const mcqScore = submitted ? score : 0
@@ -196,6 +220,21 @@ export default function ExamPage() {
           white-space: nowrap;
         }
         .exam-btn-secondary:hover { border-color: #a855f7; color: #9333ea; }
+        .pdf-btn {
+          background: rgba(255,255,255,0.8);
+          border: 1px solid #e8e0f0;
+          border-radius: 12px;
+          padding: 12px 16px;
+          color: #6b7280;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: border-color 0.15s;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .pdf-btn:hover { border-color: #a855f7; color: #a855f7; }
         .exam-card {
           background: rgba(255,255,255,0.8);
           border: 1px solid #e8e0f0;
@@ -295,8 +334,9 @@ export default function ExamPage() {
             <div className="flex gap-3">
               <input type="text" placeholder="Subject — e.g. Physics" value={subject}
                 onChange={e => setSubject(e.target.value)} className="exam-input flex-1" />
-              <input type="text" placeholder="Topic — e.g. Newton's Laws" value={topic}
-                onChange={e => setTopic(e.target.value)}
+              <input type="text" placeholder="Topic — e.g. Newton's Laws"
+                value={pdfName || topic}
+                onChange={e => { setTopic(e.target.value); setPdfName(''); setPdfText('') }}
                 onKeyDown={e => e.key === 'Enter' && generateExam()}
                 className="exam-input flex-1" />
             </div>
@@ -318,16 +358,26 @@ export default function ExamPage() {
                 <option value={20}>20 questions</option>
               </select>
             </div>
-            <button onClick={generateExam} disabled={loading || !subject || !topic} className="exam-btn">
-              {loading ? 'Generating exam...' : 'Generate Exam'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={() => generateExam()} disabled={loading || (!topic && !pdfText)} className="exam-btn flex-1">
+                {loading ? 'Generating exam...' : 'Generate Exam'}
+              </button>
+              <label className="pdf-btn">
+                📄 Upload PDF
+                <input type="file" accept=".pdf" onChange={handlePDF} style={{ display: 'none' }} />
+              </label>
+            </div>
           </div>
         )}
+
+        {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
 
         {/* Loading */}
         {loading && (
           <div className="empty-state">
-            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>Generating your exam with AI...</p>
+            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>
+              {pdfName ? `Reading ${pdfName}...` : 'Generating your exam with AI...'}
+            </p>
           </div>
         )}
 
@@ -336,7 +386,7 @@ export default function ExamPage() {
           <div className="exam-card" style={{ textAlign: 'center' }}>
             <h2 className="text-xl font-bold mb-2" style={{ color: '#1a1a2e' }}>{exam.title}</h2>
             <p className="text-sm mb-6" style={{ color: '#9ca3af' }}>
-              {exam.subject} · {exam.topic} · {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+              {exam.subject} · {pdfName || exam.topic.slice(0, 40)}{!pdfName && exam.topic.length > 40 ? '...' : ''} · {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
             </p>
             <div className="flex justify-center gap-10 mb-8">
               <div>

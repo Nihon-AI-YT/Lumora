@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import 'katex/dist/katex.min.css'
 import katex from 'katex'
 
@@ -9,7 +9,6 @@ interface Card {
 }
 
 function renderMath(text: string) {
-  // Replace $$...$$ and $...$ with rendered KaTeX
   try {
     let result = text
     result = result.replace(/\$\$([^$]+)\$\$/g, (_, expr) => {
@@ -25,11 +24,7 @@ function renderMath(text: string) {
 }
 
 function CardText({ text }: { text: string }) {
-  return (
-    <span
-      dangerouslySetInnerHTML={{ __html: renderMath(text) }}
-    />
-  )
+  return <span dangerouslySetInnerHTML={{ __html: renderMath(text) }} />
 }
 
 export default function FlashcardsPage() {
@@ -39,9 +34,12 @@ export default function FlashcardsPage() {
   const [flipped, setFlipped] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [pdfName, setPdfName] = useState('')
 
-  const generateCards = async () => {
-    if (!subject || !topic) return
+  const generateCards = async (overrideTopic?: string, overrideSubject?: string) => {
+    const activeTopic = overrideTopic || topic
+    const activeSubject = overrideSubject || subject || 'General'
+    if (!activeTopic) return
     setLoading(true)
     setError('')
     setCards([])
@@ -50,7 +48,7 @@ export default function FlashcardsPage() {
       const res = await fetch('/api/flashcards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, topic, count: 8 })
+        body: JSON.stringify({ subject: activeSubject, topic: activeTopic, count: 8 })
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -58,6 +56,31 @@ export default function FlashcardsPage() {
     } catch {
       setError('Failed to generate cards. Try again.')
     } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPdfName(file.name)
+    setError('')
+    setLoading(true)
+    setCards([])
+    setFlipped(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/extract-pdf', {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setTopic(data.text)
+      await generateCards(data.text, subject || 'General')
+    } catch {
+      setError('Failed to read PDF. Try again.')
       setLoading(false)
     }
   }
@@ -91,6 +114,21 @@ export default function FlashcardsPage() {
         }
         .fc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .fc-btn:hover:not(:disabled) { opacity: 0.9; }
+        .pdf-btn {
+          background: rgba(255,255,255,0.8);
+          border: 1px solid #e8e0f0;
+          border-radius: 12px;
+          padding: 12px 16px;
+          color: #6b7280;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: border-color 0.15s;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .pdf-btn:hover { border-color: #a855f7; color: #a855f7; }
         .card-wrap {
           cursor: pointer;
           background: rgba(255,255,255,0.75);
@@ -138,14 +176,14 @@ export default function FlashcardsPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1" style={{ color: '#1a1a2e' }}>Flashcards</h1>
-          <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart flashcards for any subject and topic</p>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart flashcards from a topic or upload a PDF</p>
         </div>
 
         {/* Controls */}
-        <div className="flex gap-3 mb-8">
+        <div className="flex gap-3 mb-3">
           <input
             type="text"
-            placeholder="Subject — e.g. Physics, History, Japanese"
+            placeholder="Subject — e.g. Physics, History"
             value={subject}
             onChange={e => setSubject(e.target.value)}
             className="fc-input"
@@ -153,15 +191,31 @@ export default function FlashcardsPage() {
           />
           <input
             type="text"
-            placeholder="Topic — e.g. Newton's Laws, World War II"
-            value={topic}
-            onChange={e => setTopic(e.target.value)}
+            placeholder="Topic — e.g. Newton's Laws"
+            value={pdfName || topic}
+            onChange={e => { setTopic(e.target.value); setPdfName('') }}
             onKeyDown={e => e.key === 'Enter' && generateCards()}
             className="fc-input flex-1"
           />
-          <button onClick={generateCards} disabled={loading || !subject || !topic} className="fc-btn">
+          <button onClick={() => generateCards()} disabled={loading || !topic} className="fc-btn">
             {loading ? 'Generating...' : 'Generate'}
           </button>
+        </div>
+
+        {/* PDF Upload */}
+        <div className="flex items-center gap-3 mb-8">
+          <label className="pdf-btn">
+            📄 Upload PDF
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handlePDF}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <p className="text-xs" style={{ color: '#9ca3af' }}>
+            Upload a PDF and cards will generate automatically
+          </p>
         </div>
 
         {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
@@ -171,14 +225,16 @@ export default function FlashcardsPage() {
           <div className="empty-state">
             <div className="empty-icon">▦</div>
             <p className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>No cards yet</p>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a subject and topic above, then hit Generate</p>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a subject and topic, or upload a PDF</p>
           </div>
         )}
 
         {loading && (
           <div className="empty-state">
             <div className="empty-icon" style={{ fontSize: '22px' }}>✦</div>
-            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>Generating your flashcards...</p>
+            <p className="text-sm animate-pulse" style={{ color: '#a855f7' }}>
+              {pdfName ? `Reading ${pdfName}...` : 'Generating your flashcards...'}
+            </p>
           </div>
         )}
 
