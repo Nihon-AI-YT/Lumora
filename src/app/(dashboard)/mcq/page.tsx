@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 interface Question {
   question: string
@@ -73,11 +74,43 @@ export default function MCQPage() {
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     let s = 0
-    questions.forEach((q, i) => { if (selected[i] === q.correct) s++ })
+    const wrongQuestions: { question: string; selected: string; correct: string }[] = []
+
+    questions.forEach((q, i) => {
+      if (selected[i] === q.correct) {
+        s++
+      } else {
+        wrongQuestions.push({
+          question: q.question,
+          selected: selected[i],
+          correct: q.correct
+        })
+      }
+    })
+
     setScore(s)
     setSubmitted(true)
+
+    // Save attempt to Supabase
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('mcq_attempts').insert({
+          user_id: user.id,
+          subject: subject || 'General',
+          topic: pdfName || topic.slice(0, 100),
+          score: s,
+          total: questions.length,
+          wrong_questions: wrongQuestions
+        })
+      }
+    } catch (err) {
+      console.error('Failed to save attempt:', err)
+      // Silent fail — don't block the user
+    }
   }
 
   return (
@@ -262,9 +295,14 @@ export default function MCQPage() {
             <p className="text-3xl font-bold mb-1" style={{ color: score === questions.length ? '#10b981' : score >= questions.length / 2 ? '#a855f7' : '#ef4444' }}>
               {score} / {questions.length}
             </p>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>
+            <p className="text-sm mb-2" style={{ color: '#9ca3af' }}>
               {score === questions.length ? '🎉 Perfect score!' : score >= questions.length / 2 ? '👍 Good job — review the ones you missed.' : '📚 Keep practicing — check the explanations below.'}
             </p>
+            {score < questions.length && (
+              <p className="text-xs" style={{ color: '#a855f7' }}>
+                ✦ Your mistakes have been saved — check the Review tab to see weak topics.
+              </p>
+            )}
           </div>
         )}
 
