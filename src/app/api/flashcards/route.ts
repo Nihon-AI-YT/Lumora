@@ -53,7 +53,7 @@ async function tryGroq(subject: string, topic: string, count: number) {
       'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      model: 'llama-3.3-70b-versatile',
       temperature: 0.4,
       messages: [
         {

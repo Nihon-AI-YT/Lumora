@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface WrongQuestion {
@@ -24,13 +25,16 @@ interface WeakTopic {
   attempts: number
   totalWrong: number
   totalQuestions: number
+  wrongQuestions: WrongQuestion[]
 }
 
 export default function ReviewPage() {
+  const router = useRouter()
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'mistakes' | 'topics'>('overview')
+  const [creatingChat, setCreatingChat] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -59,15 +63,50 @@ export default function ReviewPage() {
     data.forEach(a => {
       const key = `${a.subject}__${a.topic}`
       if (!map[key]) {
-        map[key] = { subject: a.subject, topic: a.topic, attempts: 0, totalWrong: 0, totalQuestions: 0 }
+        map[key] = { subject: a.subject, topic: a.topic, attempts: 0, totalWrong: 0, totalQuestions: 0, wrongQuestions: [] }
       }
       map[key].attempts++
       map[key].totalWrong += (a.total - a.score)
       map[key].totalQuestions += a.total
+      map[key].wrongQuestions.push(...a.wrong_questions)
     })
     const sorted = Object.values(map).sort((a, b) => b.totalWrong - a.totalWrong)
     setWeakTopics(sorted)
   }
+
+const learnWithTutor = async (t: WeakTopic) => {
+  setCreatingChat(t.topic)
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const wrongList = t.wrongQuestions.slice(0, 5).map((q, i) =>
+      `${i + 1}. Question: "${q.question}"\n   My answer: ${q.selected}\n   Correct: ${q.correct}`
+    ).join('\n\n')
+
+    const contextMessage = `The student just did an MCQ quiz on ${t.subject} — ${t.topic} and got ${t.totalWrong} question${t.totalWrong > 1 ? 's' : ''} wrong. Explain exactly what they got wrong and teach the missing concepts clearly. Here are their wrong answers:\n\n${wrongList}`
+
+    const displayMessage = `I need help reviewing my ${t.topic} mistakes — I got ${t.totalWrong} question${t.totalWrong > 1 ? 's' : ''} wrong.`
+
+    const { data: chat } = await supabase
+  .from('tutor_chats')
+  .insert({ user_id: user.id, title: `Review: ${t.topic.slice(0, 30)}`, meta: { isReview: true, subject: t.subject, topic: t.topic } })
+  .select()
+  .single()
+    if (!chat) throw new Error('Failed to create chat')
+
+    await supabase.from('tutor_messages').insert([
+      { chat_id: chat.id, role: 'user', content: displayMessage },
+      { chat_id: chat.id, role: 'system_context', content: contextMessage }
+    ])
+
+    router.push(`/tutor/${chat.id}`)
+  } catch (err) {
+    console.error('Failed to create tutor chat:', err)
+    setCreatingChat(null)
+  }
+}
 
   const totalAttempts = attempts.length
   const totalQuestions = attempts.reduce((a, b) => a + b.total, 0)
@@ -171,6 +210,20 @@ export default function ReviewPage() {
           border-bottom: 1px solid #f0eaf8;
         }
         .attempt-row:last-child { border-bottom: none; }
+        .learn-btn {
+          background: linear-gradient(135deg, #a855f7, #ec4899);
+          color: white;
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 7px 14px;
+          border-radius: 20px;
+          border: none;
+          cursor: pointer;
+          transition: opacity 0.15s;
+          white-space: nowrap;
+        }
+        .learn-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .learn-btn:hover:not(:disabled) { opacity: 0.85; }
       `}</style>
 
       <div className="max-w-3xl mx-auto">
@@ -245,20 +298,29 @@ export default function ReviewPage() {
                 {weakTopics.map((t, i) => {
                   const errorRate = Math.round((t.totalWrong / t.totalQuestions) * 100)
                   return (
-                    <div key={i} style={{ marginBottom: '20px' }}>
+                    <div key={i} style={{ marginBottom: '24px' }}>
                       <div className="flex justify-between items-start">
-                        <div>
+                        <div style={{ flex: 1, marginRight: '12px' }}>
                           <p className="text-sm font-semibold" style={{ color: '#1a1a2e' }}>{t.topic.slice(0, 50)}{t.topic.length > 50 ? '...' : ''}</p>
                           <p className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>{t.subject} · {t.attempts} session{t.attempts > 1 ? 's' : ''} · {t.totalWrong} wrong</p>
                         </div>
-                        <span style={{
-                          fontSize: '0.75rem', fontWeight: '700', padding: '2px 10px',
-                          borderRadius: '20px',
-                          background: errorRate >= 60 ? 'rgba(239,68,68,0.08)' : errorRate >= 30 ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)',
-                          color: errorRate >= 60 ? '#ef4444' : errorRate >= 30 ? '#f59e0b' : '#10b981'
-                        }}>
-                          {errorRate}% error
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span style={{
+                            fontSize: '0.75rem', fontWeight: '700', padding: '2px 10px',
+                            borderRadius: '20px',
+                            background: errorRate >= 60 ? 'rgba(239,68,68,0.08)' : errorRate >= 30 ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)',
+                            color: errorRate >= 60 ? '#ef4444' : errorRate >= 30 ? '#f59e0b' : '#10b981'
+                          }}>
+                            {errorRate}% error
+                          </span>
+                          <button
+                            className="learn-btn"
+                            disabled={creatingChat === t.topic}
+                            onClick={() => learnWithTutor(t)}
+                          >
+                            {creatingChat === t.topic ? 'Opening...' : '📚 Learn with Tutor'}
+                          </button>
+                        </div>
                       </div>
                       <div className="weak-bar-bg">
                         <div className="weak-bar-fill" style={{ width: `${errorRate}%` }} />

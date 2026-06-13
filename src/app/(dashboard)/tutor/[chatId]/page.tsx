@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface Message {
@@ -24,6 +24,7 @@ function renderMarkdown(text: string): string {
     .replace(/^[-•] (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0;"><span style="color:#a855f7;min-width:16px;">•</span><span>$1</span></div>')
     .replace(/\n\n/g, '<br/>')
     .replace(/\n/g, '<br/>')
+    .replace(/^#{1,3}\s*$/gm, '')
 }
 
 function AIBubble({ content }: { content: string }) {
@@ -32,7 +33,6 @@ function AIBubble({ content }: { content: string }) {
   const [showEmoji, setShowEmoji] = useState<'up' | 'down' | null>(null)
 
   function handleCopy() {
-    // Strip markdown to get clean plain text
     const plain = content
       .replace(/^#{1,3} /gm, '')
       .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -63,29 +63,21 @@ function AIBubble({ content }: { content: string }) {
       `}</style>
       {showEmoji && (
         <div style={{
-          position: 'absolute',
-          top: '-20px',
-          left: '50%',
-          fontSize: '2rem',
-          animation: 'floatUp 1.2s ease forwards',
-          pointerEvents: 'none',
-          zIndex: 10,
+          position: 'absolute', top: '-20px', left: '50%',
+          fontSize: '2rem', animation: 'floatUp 1.2s ease forwards',
+          pointerEvents: 'none', zIndex: 10,
         }}>
           {showEmoji === 'up' ? '👍' : '👎'}
         </div>
       )}
-      <div
-        className="bubble-ai"
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-      />
+      <div className="bubble-ai" dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />
       <div style={{ display: 'flex', gap: '4px', marginTop: '6px', paddingLeft: '4px' }}>
         <button
           onClick={handleCopy}
           style={{
             background: copied ? 'rgba(16,185,129,0.08)' : 'none',
             border: 'none', cursor: 'pointer', padding: '4px 8px',
-            borderRadius: '6px',
-            color: copied ? '#10b981' : '#9ca3af',
+            borderRadius: '6px', color: copied ? '#10b981' : '#9ca3af',
             fontSize: '0.75rem', transition: 'all 0.15s',
             display: 'flex', alignItems: 'center', gap: '4px'
           }}
@@ -99,29 +91,23 @@ function AIBubble({ content }: { content: string }) {
           style={{
             background: reaction === 'up' ? 'rgba(16,185,129,0.08)' : 'none',
             border: 'none', cursor: 'pointer', padding: '4px 6px',
-            borderRadius: '6px',
-            color: reaction === 'up' ? '#10b981' : '#9ca3af',
+            borderRadius: '6px', color: reaction === 'up' ? '#10b981' : '#9ca3af',
             fontSize: '0.75rem', transition: 'all 0.15s'
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.08)'; (e.currentTarget as HTMLElement).style.color = '#10b981' }}
           onMouseLeave={e => { if (reaction !== 'up') { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = '#9ca3af' }}}
-        >
-          👍
-        </button>
+        >👍</button>
         <button
           onClick={() => handleReaction('down')}
           style={{
             background: reaction === 'down' ? 'rgba(239,68,68,0.08)' : 'none',
             border: 'none', cursor: 'pointer', padding: '4px 6px',
-            borderRadius: '6px',
-            color: reaction === 'down' ? '#ef4444' : '#9ca3af',
+            borderRadius: '6px', color: reaction === 'down' ? '#ef4444' : '#9ca3af',
             fontSize: '0.75rem', transition: 'all 0.15s'
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)'; (e.currentTarget as HTMLElement).style.color = '#ef4444' }}
           onMouseLeave={e => { if (reaction !== 'down') { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = '#9ca3af' }}}
-        >
-          👎
-        </button>
+        >👎</button>
       </div>
     </div>
   )
@@ -129,12 +115,15 @@ function AIBubble({ content }: { content: string }) {
 
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>()
+  const router = useRouter()
   const supabase = createClient()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<{ full_name: string, age: number, level: string } | null>(null)
+  const [readyToTest, setReadyToTest] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const autoSentRef = useRef(false)
 
   useEffect(() => {
     loadChat()
@@ -162,13 +151,64 @@ export default function ChatPage() {
       .select('role, content')
       .eq('chat_id', chatId)
       .order('created_at', { ascending: true })
+
     if (data && data.length > 0) {
-      setMessages(data as Message[])
+      const displayMessages = data.filter(m => m.role !== 'system_context') as Message[]
+      const contextMessage = data.find(m => m.role === 'system_context')
+
+      setMessages(displayMessages)
+
+      const isReviewChat = displayMessages.length === 1 &&
+                           displayMessages[0].role === 'user' &&
+                           contextMessage
+
+      if (isReviewChat && !autoSentRef.current) {
+        autoSentRef.current = true
+        autoSendReviewMessage(displayMessages[0].content, displayMessages, contextMessage.content)
+      }
     } else {
       setMessages([{
         role: 'assistant',
         content: "Hi! I'm Lumora, your AI tutor. Ask me anything — I'll explain it clearly, step by step."
       }])
+    }
+  }
+
+  async function autoSendReviewMessage(displayContent: string, existingMessages: Message[], contextContent: string) {
+    setLoading(true)
+    try {
+      const messagesForAI = [{ role: 'user', content: contextContent }]
+      const res = await fetch('/api/tutor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: messagesForAI, profile })
+      })
+      const data = await res.json()
+
+      let replyText = data.reply
+      const readyMatch = replyText.match(/\[?READY_TO_TEST:\s*(.+?)\]?$/im)
+if (readyMatch) {
+  setReadyToTest(readyMatch[1].trim())
+  replyText = replyText.replace(/\[?READY_TO_TEST:\s*.+?\]?$/im, '').trim()
+}
+
+      const aiMessage: Message = { role: 'assistant', content: replyText }
+      setMessages([...existingMessages, aiMessage])
+
+      await supabase.from('tutor_messages').insert({
+        chat_id: chatId,
+        role: 'assistant',
+        content: aiMessage.content
+      })
+
+      const title = await generateTitle(displayContent)
+      await supabase.from('tutor_chats')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('id', chatId)
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Try again.' }])
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -184,7 +224,7 @@ export default function ChatPage() {
           model: 'llama-3.3-70b-versatile',
           messages: [{
             role: 'user',
-            content: `Generate a short 3-5 word chat title for this student question: "${firstMessage}". Reply with ONLY the title, no quotes, no punctuation, no explanation.`
+            content: `Generate a short 3-5 word chat title for this student question: "${firstMessage.slice(0, 200)}". Reply with ONLY the title, no quotes, no punctuation, no explanation.`
           }],
           max_tokens: 20,
           temperature: 0.7
@@ -212,7 +252,15 @@ export default function ChatPage() {
         body: JSON.stringify({ messages: updated, profile })
       })
       const data = await res.json()
-      const aiMessage: Message = { role: 'assistant', content: data.reply }
+
+      let replyText = data.reply
+      const readyMatch = replyText.match(/\[?READY_TO_TEST:\s*(.+?)\]?$/im)
+if (readyMatch) {
+  setReadyToTest(readyMatch[1].trim())
+  replyText = replyText.replace(/\[?READY_TO_TEST:\s*.+?\]?$/im, '').trim()
+}
+
+      const aiMessage: Message = { role: 'assistant', content: replyText }
       setMessages([...updated, aiMessage])
 
       await supabase.from('tutor_messages').insert([
@@ -236,6 +284,12 @@ export default function ChatPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleTestYourself(type: 'mcq' | 'flashcards' | 'exam') {
+    if (!readyToTest) return
+    const params = new URLSearchParams({ topic: readyToTest, subject: 'General', auto: 'true' })
+    router.push(`/${type}?${params.toString()}`)
   }
 
   return (
@@ -356,6 +410,49 @@ export default function ChatPage() {
               <span className="dot" style={{ animationDelay: '0ms' }} />
               <span className="dot" style={{ animationDelay: '150ms' }} />
               <span className="dot" style={{ animationDelay: '300ms' }} />
+            </div>
+          )}
+          {readyToTest && !loading && (
+            <div style={{
+              background: 'rgba(168,85,247,0.06)',
+              border: '1px solid rgba(168,85,247,0.15)',
+              borderRadius: '16px',
+              padding: '16px 20px',
+              alignSelf: 'stretch',
+              marginTop: '8px'
+            }}>
+              <p className="text-sm font-semibold mb-1" style={{ color: '#1a1a2e' }}>
+                Ready to test yourself? 🎯
+              </p>
+              <p className="text-xs mb-3" style={{ color: '#9ca3af' }}>
+                You've got a solid understanding of <strong>{readyToTest}</strong>. Want to lock it in?
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => handleTestYourself('flashcards')} style={{
+                  background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
+                  borderRadius: '10px', padding: '8px 14px', cursor: 'pointer',
+                  fontSize: '0.8rem', fontWeight: '600', color: '#a855f7', transition: 'all 0.15s'
+                }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.15)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'}
+                >▦ Flashcards</button>
+                <button onClick={() => handleTestYourself('mcq')} style={{
+                  background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
+                  borderRadius: '10px', padding: '8px 14px', cursor: 'pointer',
+                  fontSize: '0.8rem', fontWeight: '600', color: '#a855f7', transition: 'all 0.15s'
+                }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.15)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'}
+                >◈ MCQ Practice</button>
+                <button onClick={() => handleTestYourself('exam')} style={{
+                  background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
+                  borderRadius: '10px', padding: '8px 14px', cursor: 'pointer',
+                  fontSize: '0.8rem', fontWeight: '600', color: '#a855f7', transition: 'all 0.15s'
+                }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.15)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'}
+                >📝 Mock Exam</button>
+              </div>
             </div>
           )}
           <div ref={bottomRef} />

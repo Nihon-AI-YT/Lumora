@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface Question {
@@ -10,6 +11,7 @@ interface Question {
 }
 
 export default function MCQPage() {
+  const searchParams = useSearchParams()
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
   const [pdfName, setPdfName] = useState('')
@@ -19,6 +21,17 @@ export default function MCQPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [score, setScore] = useState(0)
+
+  useEffect(() => {
+    const autoTopic = searchParams.get('topic')
+    const autoSubject = searchParams.get('subject')
+    const auto = searchParams.get('auto')
+    if (autoTopic && auto === 'true') {
+      setTopic(autoTopic)
+      if (autoSubject) setSubject(autoSubject)
+      generateQuestions(autoTopic, autoSubject || 'General')
+    }
+  }, [])
 
   const generateQuestions = async (overrideTopic?: string, overrideSubject?: string) => {
     const activeTopic = overrideTopic || topic
@@ -93,7 +106,6 @@ export default function MCQPage() {
     setScore(s)
     setSubmitted(true)
 
-    // Save attempt to Supabase
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -109,7 +121,6 @@ export default function MCQPage() {
       }
     } catch (err) {
       console.error('Failed to save attempt:', err)
-      // Silent fail — don't block the user
     }
   }
 
@@ -286,7 +297,14 @@ export default function MCQPage() {
           </p>
         </div>
 
-        {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
+        {error && (
+  <div className="flex items-center gap-3 mb-4">
+    <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
+    <button onClick={() => generateQuestions()} className="mcq-btn" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+      Retry
+    </button>
+  </div>
+)}
 
         {/* Score */}
         {submitted && (
@@ -376,7 +394,6 @@ export default function MCQPage() {
             )}
           </div>
         )}
-
       </div>
     </>
   )

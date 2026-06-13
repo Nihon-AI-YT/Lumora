@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import 'katex/dist/katex.min.css'
 import katex from 'katex'
 
@@ -28,6 +29,7 @@ function CardText({ text }: { text: string }) {
 }
 
 export default function FlashcardsPage() {
+  const searchParams = useSearchParams()
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
   const [cards, setCards] = useState<Card[]>([])
@@ -35,6 +37,17 @@ export default function FlashcardsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [pdfName, setPdfName] = useState('')
+
+  useEffect(() => {
+    const autoTopic = searchParams.get('topic')
+    const autoSubject = searchParams.get('subject')
+    const auto = searchParams.get('auto')
+    if (autoTopic && auto === 'true') {
+      setTopic(autoTopic)
+      if (autoSubject) setSubject(autoSubject)
+      generateCards(autoTopic, autoSubject || 'General')
+    }
+  }, [])
 
   const generateCards = async (overrideTopic?: string, overrideSubject?: string) => {
     const activeTopic = overrideTopic || topic
@@ -172,55 +185,34 @@ export default function FlashcardsPage() {
       `}</style>
 
       <div className="max-w-4xl mx-auto">
-
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1" style={{ color: '#1a1a2e' }}>Flashcards</h1>
           <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart flashcards from a topic or upload a PDF</p>
         </div>
 
-        {/* Controls */}
         <div className="flex gap-3 mb-3">
-          <input
-            type="text"
-            placeholder="Subject — e.g. Physics, History"
-            value={subject}
-            onChange={e => setSubject(e.target.value)}
-            className="fc-input"
-            style={{ width: '220px' }}
-          />
-          <input
-            type="text"
-            placeholder="Topic — e.g. Newton's Laws"
+          <input type="text" placeholder="Subject — e.g. Physics, History" value={subject}
+            onChange={e => setSubject(e.target.value)} className="fc-input" style={{ width: '220px' }} />
+          <input type="text" placeholder="Topic — e.g. Newton's Laws"
             value={pdfName || topic}
             onChange={e => { setTopic(e.target.value); setPdfName('') }}
             onKeyDown={e => e.key === 'Enter' && generateCards()}
-            className="fc-input flex-1"
-          />
+            className="fc-input flex-1" />
           <button onClick={() => generateCards()} disabled={loading || !topic} className="fc-btn">
             {loading ? 'Generating...' : 'Generate'}
           </button>
         </div>
 
-        {/* PDF Upload */}
         <div className="flex items-center gap-3 mb-8">
           <label className="pdf-btn">
             📄 Upload PDF
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handlePDF}
-              style={{ display: 'none' }}
-            />
+            <input type="file" accept=".pdf" onChange={handlePDF} style={{ display: 'none' }} />
           </label>
-          <p className="text-xs" style={{ color: '#9ca3af' }}>
-            Upload a PDF and cards will generate automatically
-          </p>
+          <p className="text-xs" style={{ color: '#9ca3af' }}>Upload a PDF and cards will generate automatically</p>
         </div>
 
         {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
 
-        {/* Empty state */}
         {!loading && cards.length === 0 && (
           <div className="empty-state">
             <div className="empty-icon">▦</div>
@@ -245,11 +237,8 @@ export default function FlashcardsPage() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {cards.map((card, i) => (
-                <div
-                  key={i}
-                  onClick={() => setFlipped(flipped === i ? null : i)}
-                  className={`card-wrap ${flipped === i ? 'flipped' : ''}`}
-                >
+                <div key={i} onClick={() => setFlipped(flipped === i ? null : i)}
+                  className={`card-wrap ${flipped === i ? 'flipped' : ''}`}>
                   <div>
                     <p className="text-xs uppercase tracking-wider mb-3" style={{ color: flipped === i ? '#a855f7' : '#9ca3af' }}>
                       {flipped === i ? 'Answer' : `Card ${i + 1}`}
@@ -266,7 +255,6 @@ export default function FlashcardsPage() {
             </div>
           </>
         )}
-
       </div>
     </>
   )

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 interface MCQQuestion {
   id: number
@@ -50,6 +51,19 @@ export default function ExamPage() {
   const [timerActive, setTimerActive] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [error, setError] = useState('')
+
+  const searchParams = useSearchParams()
+
+useEffect(() => {
+  const autoTopic = searchParams.get('topic')
+  const autoSubject = searchParams.get('subject')
+  const auto = searchParams.get('auto')
+  if (autoTopic && auto === 'true') {
+    setTopic(autoTopic)
+    if (autoSubject) setSubject(autoSubject)
+    generateExam(autoTopic, autoSubject || 'General')
+  }
+}, [])
 
   useEffect(() => {
     if (!timerActive) return
