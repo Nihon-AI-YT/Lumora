@@ -86,7 +86,7 @@ export default function Sidebar({ name, userId }: Props) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const navItems = [
+ const navItems = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/flashcards', label: 'Flashcards' },
     { href: '/mcq', label: 'MCQ Practice' },
