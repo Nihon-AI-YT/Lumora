@@ -27,12 +27,26 @@ export default function Sidebar({ name, userId }: Props) {
   const [renameValue, setRenameValue] = useState('')
   const [copied, setCopied] = useState(false)
   const [mounted, setMounted] = useState(false)
-
-  useEffect(() => { setMounted(true) }, [])
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   useEffect(() => {
-    loadChats()
-  }, [pathname])
+    setMounted(true)
+    const saved = localStorage.getItem('lumora-theme') as 'light' | 'dark' | null
+    if (saved) {
+      setTheme(saved)
+      document.documentElement.setAttribute('data-theme', saved)
+    }
+  }, [])
+
+  function toggleTheme() {
+    const next = theme === 'light' ? 'dark' : 'light'
+    setTheme(next)
+    localStorage.setItem('lumora-theme', next)
+    document.documentElement.setAttribute('data-theme', next)
+  }
+
+  useEffect(() => { loadChats() }, [pathname])
 
   useEffect(() => {
     const interval = setInterval(loadChats, 3000)
@@ -86,7 +100,7 @@ export default function Sidebar({ name, userId }: Props) {
     setTimeout(() => setCopied(false), 2000)
   }
 
- const navItems = [
+  const navItems = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/flashcards', label: 'Flashcards' },
     { href: '/mcq', label: 'MCQ Practice' },
@@ -97,48 +111,108 @@ export default function Sidebar({ name, userId }: Props) {
   const dropdown = menuOpen && mounted ? createPortal(
     <div
       style={{
-        position: 'fixed',
-        left: menuPos.x,
-        top: menuPos.y,
-        background: 'white',
-        border: '1px solid #e8e0f0',
-        borderRadius: '10px',
-        padding: '4px',
-        zIndex: 99999,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        minWidth: '150px',
+        position: 'fixed', left: menuPos.x, top: menuPos.y,
+        background: 'white', border: '1px solid #e8e0f0', borderRadius: '10px',
+        padding: '4px', zIndex: 99999, boxShadow: '0 4px 20px rgba(0,0,0,0.12)', minWidth: '150px',
       }}
       onMouseDown={e => e.stopPropagation()}
     >
-      <button
-        onMouseDown={e => {
-          e.stopPropagation()
-          setRenamingId(menuOpen)
-          setRenameValue(chats.find(c => c.id === menuOpen)?.title || '')
-          setMenuOpen(null)
-        }}
+      <button onMouseDown={e => { e.stopPropagation(); setRenamingId(menuOpen); setRenameValue(chats.find(c => c.id === menuOpen)?.title || ''); setMenuOpen(null) }}
         style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: '0.8rem', borderRadius: '6px', border: 'none', background: 'none', cursor: 'pointer', color: '#1a1a2e' }}
         onMouseEnter={e => (e.currentTarget.style.background = '#f5f0ff')}
         onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-      >
-        Rename
-      </button>
-      <button
-        onMouseDown={e => { e.stopPropagation(); shareChat(menuOpen) }}
+      >Rename</button>
+      <button onMouseDown={e => { e.stopPropagation(); shareChat(menuOpen) }}
         style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: '0.8rem', borderRadius: '6px', border: 'none', background: 'none', cursor: 'pointer', color: '#1a1a2e' }}
         onMouseEnter={e => (e.currentTarget.style.background = '#f5f0ff')}
         onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-      >
-        Share link
-      </button>
-      <button
-        onMouseDown={e => { e.stopPropagation(); deleteChat(menuOpen) }}
+      >Share link</button>
+      <button onMouseDown={e => { e.stopPropagation(); deleteChat(menuOpen) }}
         style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: '0.8rem', borderRadius: '6px', border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}
         onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
         onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+      >Delete</button>
+    </div>,
+    document.body
+  ) : null
+
+  const settingsModal = settingsOpen && mounted ? createPortal(
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)'
+      }}
+      onMouseDown={() => setSettingsOpen(false)}
+    >
+      <div
+        style={{
+          background: 'white', borderRadius: '20px', padding: '28px',
+          width: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+          border: '1px solid #e8e0f0'
+        }}
+        onMouseDown={e => e.stopPropagation()}
       >
-        Delete
-      </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: '700', color: '#1a1a2e', margin: 0 }}>Settings</h2>
+          <button onClick={() => setSettingsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1.2rem' }}>✕</button>
+        </div>
+
+        {/* Plan */}
+        <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1a1a2e', margin: 0 }}>Free Plan</p>
+              <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '2px 0 0' }}>Limited daily usage</p>
+            </div>
+            <button style={{
+              background: 'linear-gradient(135deg, #a855f7, #ec4899)', color: 'white',
+              border: 'none', borderRadius: '8px', padding: '6px 14px',
+              fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer'
+            }}>Upgrade to Pro</button>
+          </div>
+        </div>
+
+        {/* Theme */}
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '0.72rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9ca3af', marginBottom: '10px' }}>Appearance</p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => { setTheme('light'); localStorage.setItem('lumora-theme', 'light'); document.documentElement.setAttribute('data-theme', 'light') }}
+              style={{
+                flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer',
+                border: theme === 'light' ? '2px solid #a855f7' : '1px solid #e8e0f0',
+                background: theme === 'light' ? 'rgba(168,85,247,0.06)' : 'white',
+                color: theme === 'light' ? '#9333ea' : '#6b7280',
+                fontSize: '0.8rem', fontWeight: '600', transition: 'all 0.15s'
+              }}
+            >☀️ Light</button>
+            <button
+              disabled
+              style={{
+                flex: 1, padding: '10px', borderRadius: '10px', cursor: 'not-allowed',
+                border: '1px solid #e8e0f0',
+                background: 'white',
+                color: '#9ca3af',
+                fontSize: '0.8rem', fontWeight: '600', transition: 'all 0.15s',
+                opacity: 0.4
+              }}
+            >🌙 Dark (soon)</button>
+          </div>
+        </div>
+
+        {/* Sign out */}
+        <div style={{ borderTop: '1px solid #e8e0f0', paddingTop: '16px', marginTop: '8px' }}>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
+            style={{
+              width: '100%', padding: '10px', borderRadius: '10px',
+              border: '1px solid #fecaca', background: 'rgba(239,68,68,0.04)',
+              color: '#ef4444', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer'
+            }}
+          >Sign out</button>
+        </div>
+      </div>
     </div>,
     document.body
   ) : null
@@ -252,9 +326,24 @@ export default function Sidebar({ name, userId }: Props) {
           border-radius: 20px;
           z-index: 9999;
         }
+        .user-btn {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          width: 100%;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 6px 4px;
+          border-radius: 10px;
+          transition: background 0.15s;
+          text-align: left;
+        }
+        .user-btn:hover { background: rgba(168,85,247,0.06); }
       `}</style>
 
       {dropdown}
+      {settingsModal}
       {copied && <div className="copied-toast">Link copied to clipboard</div>}
 
       <aside className="sidebar w-56 flex flex-col py-6 px-3 fixed h-full z-10">
@@ -278,11 +367,7 @@ export default function Sidebar({ name, userId }: Props) {
         <div className="section-label">Menu</div>
         <nav className="flex flex-col gap-1">
           {navItems.map(item => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`nav-link ${pathname === item.href ? 'active' : ''}`}
-            >
+            <Link key={item.href} href={item.href} className={`nav-link ${pathname === item.href ? 'active' : ''}`}>
               {item.label}
             </Link>
           ))}
@@ -294,7 +379,6 @@ export default function Sidebar({ name, userId }: Props) {
           <button className="new-chat-btn" onClick={newChat}>
             <span style={{ fontSize: '1rem' }}>+</span> New chat
           </button>
-
           <div className="flex flex-col gap-0.5 overflow-y-auto" style={{ maxHeight: '280px' }}>
             {chats.map(chat => (
               <div
@@ -307,10 +391,7 @@ export default function Sidebar({ name, userId }: Props) {
                     className="rename-input"
                     value={renameValue}
                     onChange={e => setRenameValue(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') renameChat(chat.id)
-                      if (e.key === 'Escape') setRenamingId(null)
-                    }}
+                    onKeyDown={e => { if (e.key === 'Enter') renameChat(chat.id); if (e.key === 'Escape') setRenamingId(null) }}
                     autoFocus
                     onClick={e => e.stopPropagation()}
                   />
@@ -325,26 +406,25 @@ export default function Sidebar({ name, userId }: Props) {
                     setMenuPos({ x: rect.left - 110, y: rect.bottom + 6 })
                     setMenuOpen(menuOpen === chat.id ? null : chat.id)
                   }}
-                >
-                  •••
-                </button>
+                >•••</button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* User */}
+        {/* User — clickable to open settings */}
         <div className="pt-4 px-1" style={{ borderTop: '1px solid #e8e0f0' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center"
+          <button className="user-btn" onClick={() => setSettingsOpen(true)}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
               style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
               <span className="text-white text-sm font-semibold">{name[0].toUpperCase()}</span>
             </div>
-            <div>
+            <div style={{ marginLeft: '8px', flex: 1, minWidth: 0 }}>
               <p className="text-sm font-medium" style={{ color: '#1a1a2e' }}>{name}</p>
               <p className="text-xs" style={{ color: '#9ca3af' }}>Free plan</p>
             </div>
-          </div>
+            <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>⚙️</span>
+          </button>
         </div>
 
       </aside>

@@ -1,29 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Background gradient colours */
   --bg-from: #dff0fa;
   --bg-to: #f5e6f8;
-
-  /* Surface (cards, sidebar, inputs) */
   --surface: #ffffff;
   --surface-hover: #f8f4ff;
   --border: #e8e0f0;
-
-  /* Text */
   --text-primary: #1a1a2e;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
-
-  /* Accent — purple to pink gradient */
   --accent-from: #a855f7;
   --accent-to: #ec4899;
   --accent-solid: #9333ea;
-
-  /* Teal for logo/brand touches */
   --brand: #06b6d4;
-
-  /* Status colours */
   --success: #10b981;
   --warning: #f59e0b;
   --error: #ef4444;
