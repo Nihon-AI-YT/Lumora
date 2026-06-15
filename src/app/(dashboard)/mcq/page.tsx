@@ -15,6 +15,9 @@ export default function MCQPage() {
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
   const [pdfName, setPdfName] = useState('')
+  const [sourceLabel, setSourceLabel] = useState('')
+  const [ytUrl, setYtUrl] = useState('')
+  const [ytLoading, setYtLoading] = useState(false)
   const [questions, setQuestions] = useState<Question[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [submitted, setSubmitted] = useState(false)
@@ -84,6 +87,34 @@ export default function MCQPage() {
     } catch {
       setError('Failed to read PDF. Try again.')
       setLoading(false)
+    }
+  }
+
+  const handleYouTube = async () => {
+    if (!ytUrl) return
+    setYtLoading(true)
+    setError('')
+    setQuestions([])
+    setSelected([])
+    setSubmitted(false)
+    setScore(0)
+    try {
+      const res = await fetch('/api/extract-youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: ytUrl })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setSourceLabel(`▶ ${data.title}`)
+      setPdfName('')
+      setTopic(data.text)
+      setYtUrl('')
+      await generateQuestions(data.text, subject || 'General')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch transcript. Try again.')
+    } finally {
+      setYtLoading(false)
     }
   }
 
@@ -271,8 +302,8 @@ export default function MCQPage() {
           <input
             type="text"
             placeholder="Topic — e.g. Newton's Laws"
-            value={pdfName || topic}
-            onChange={e => { setTopic(e.target.value); setPdfName('') }}
+            value={sourceLabel || pdfName || topic}
+            onChange={e => { setTopic(e.target.value); setPdfName(''); setSourceLabel('') }}
             onKeyDown={e => e.key === 'Enter' && generateQuestions()}
             className="mcq-input flex-1"
           />
@@ -281,20 +312,32 @@ export default function MCQPage() {
           </button>
         </div>
 
-        {/* PDF Upload */}
-        <div className="flex items-center gap-3 mb-8">
-          <label className="pdf-btn">
-            📄 Upload PDF
+        {/* PDF + YouTube */}
+        <div className="flex flex-col gap-3 mb-8">
+          <div className="flex items-center gap-3">
+            <label className="pdf-btn">
+              📄 Upload PDF
+              <input type="file" accept=".pdf" onChange={handlePDF} style={{ display: 'none' }} />
+            </label>
+            <p className="text-xs" style={{ color: '#9ca3af' }}>Upload a PDF and questions will generate automatically</p>
+          </div>
+          <div className="flex gap-3">
             <input
-              type="file"
-              accept=".pdf"
-              onChange={handlePDF}
-              style={{ display: 'none' }}
+              type="text"
+              placeholder="Paste a YouTube URL — e.g. https://youtube.com/watch?v=..."
+              value={ytUrl}
+              onChange={e => setYtUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleYouTube()}
+              className="mcq-input flex-1"
             />
-          </label>
-          <p className="text-xs" style={{ color: '#9ca3af' }}>
-            Upload a PDF and questions will generate automatically
-          </p>
+            <button
+              onClick={handleYouTube}
+              disabled={ytLoading || !ytUrl}
+              className="mcq-btn"
+            >
+              {ytLoading ? 'Fetching...' : '▶ YouTube'}
+            </button>
+          </div>
         </div>
 
         {error && (
