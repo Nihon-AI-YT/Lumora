@@ -25,7 +25,45 @@ function renderMath(text: string) {
 }
 
 function CardText({ text }: { text: string }) {
-  return <span dangerouslySetInnerHTML={{ __html: renderMath(text) }} />
+  // Render code blocks
+  const parts = text.split(/(```[\s\S]*?```|`[^`]+`)/g)
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('```') && part.endsWith('```')) {
+          const code = part.slice(3, -3).replace(/^\w+\n/, '') // strip language tag
+          return (
+            <pre key={i} style={{
+              background: 'rgba(168,85,247,0.06)',
+              border: '1px solid rgba(168,85,247,0.15)',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              fontSize: '0.75rem',
+              fontFamily: 'monospace',
+              overflowX: 'auto',
+              marginTop: '8px',
+              color: '#1a1a2e',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word'
+            }}>{code}</pre>
+          )
+        }
+        if (part.startsWith('`') && part.endsWith('`')) {
+          return (
+            <code key={i} style={{
+              background: 'rgba(168,85,247,0.08)',
+              borderRadius: '4px',
+              padding: '1px 5px',
+              fontSize: '0.8rem',
+              fontFamily: 'monospace',
+              color: '#9333ea'
+            }}>{part.slice(1, -1)}</code>
+          )
+        }
+        return <span key={i} dangerouslySetInnerHTML={{ __html: renderMath(part) }} />
+      })}
+    </>
+  )
 }
 
 export default function FlashcardsPage() {
@@ -36,7 +74,10 @@ export default function FlashcardsPage() {
   const [flipped, setFlipped] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [pdfName, setPdfName] = useState('')
+const [pdfName, setPdfName] = useState('')
+  const [sourceLabel, setSourceLabel] = useState('')
+  const [ytUrl, setYtUrl] = useState('')
+  const [ytLoading, setYtLoading] = useState(false)
 
   useEffect(() => {
     const autoTopic = searchParams.get('topic')
@@ -76,7 +117,8 @@ export default function FlashcardsPage() {
   const handlePDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setPdfName(file.name)
+setPdfName(file.name)
+    setSourceLabel('')
     setError('')
     setLoading(true)
     setCards([])
@@ -95,6 +137,31 @@ export default function FlashcardsPage() {
     } catch {
       setError('Failed to read PDF. Try again.')
       setLoading(false)
+    }
+  }
+
+  const handleYouTube = async () => {
+    if (!ytUrl) return
+    setYtLoading(true)
+    setError('')
+    setCards([])
+    setFlipped(null)
+    try {
+      const res = await fetch('/api/extract-youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: ytUrl })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+setSourceLabel(`▶ ${data.title}`)
+      setPdfName('')
+      setTopic(data.text)
+      await generateCards(data.text, subject || 'General')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch transcript. Try again.')
+    } finally {
+      setYtLoading(false)
     }
   }
 
@@ -194,8 +261,8 @@ export default function FlashcardsPage() {
           <input type="text" placeholder="Subject — e.g. Physics, History" value={subject}
             onChange={e => setSubject(e.target.value)} className="fc-input" style={{ width: '220px' }} />
           <input type="text" placeholder="Topic — e.g. Newton's Laws"
-            value={pdfName || topic}
-            onChange={e => { setTopic(e.target.value); setPdfName('') }}
+            value={sourceLabel || pdfName || topic}
+            onChange={e => { setTopic(e.target.value); setPdfName(''); setSourceLabel('') }}
             onKeyDown={e => e.key === 'Enter' && generateCards()}
             className="fc-input flex-1" />
           <button onClick={() => generateCards()} disabled={loading || !topic} className="fc-btn">
@@ -203,12 +270,31 @@ export default function FlashcardsPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3 mb-8">
-          <label className="pdf-btn">
-            📄 Upload PDF
-            <input type="file" accept=".pdf" onChange={handlePDF} style={{ display: 'none' }} />
-          </label>
-          <p className="text-xs" style={{ color: '#9ca3af' }}>Upload a PDF and cards will generate automatically</p>
+        <div className="flex flex-col gap-3 mb-8">
+          <div className="flex items-center gap-3">
+            <label className="pdf-btn">
+              📄 Upload PDF
+              <input type="file" accept=".pdf" onChange={handlePDF} style={{ display: 'none' }} />
+            </label>
+            <p className="text-xs" style={{ color: '#9ca3af' }}>Upload a PDF and cards will generate automatically</p>
+          </div>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Paste a YouTube URL — e.g. https://youtube.com/watch?v=..."
+              value={ytUrl}
+              onChange={e => setYtUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleYouTube()}
+              className="fc-input flex-1"
+            />
+            <button
+              onClick={handleYouTube}
+              disabled={ytLoading || !ytUrl}
+              className="fc-btn"
+            >
+              {ytLoading ? 'Fetching...' : '▶ YouTube'}
+            </button>
+          </div>
         </div>
 
         {error && <p className="text-sm mb-4" style={{ color: '#ef4444' }}>{error}</p>}
