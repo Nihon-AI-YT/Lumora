@@ -122,6 +122,14 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<{ full_name: string, age: number, level: string } | null>(null)
   const [readyToTest, setReadyToTest] = useState<string | null>(null)
+  const [inlineMCQCount, setInlineMCQCount] = useState(5)
+  const [inlineMCQ, setInlineMCQ] = useState<{
+    questions: { question: string; options: string[]; correct: string; explanation: string }[]
+    selected: string[]
+    submitted: boolean
+    score: number
+    loading: boolean
+  } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const autoSentRef = useRef(false)
 
@@ -133,6 +141,10 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [inlineMCQ])
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -187,10 +199,10 @@ export default function ChatPage() {
 
       let replyText = data.reply
       const readyMatch = replyText.match(/\[?READY_TO_TEST:\s*(.+?)\]?$/im)
-if (readyMatch) {
-  setReadyToTest(readyMatch[1].trim())
-  replyText = replyText.replace(/\[?READY_TO_TEST:\s*.+?\]?$/im, '').trim()
-}
+      if (readyMatch) {
+        setReadyToTest(readyMatch[1].trim())
+        replyText = replyText.replace(/\[?READY_TO_TEST:\s*.+?\]?$/im, '').trim()
+      }
 
       const aiMessage: Message = { role: 'assistant', content: replyText }
       setMessages([...existingMessages, aiMessage])
@@ -239,6 +251,7 @@ if (readyMatch) {
 
   async function sendMessage() {
     if (!input.trim() || loading) return
+    setInlineMCQ(null)
     const userMessage: Message = { role: 'user', content: input }
     const updated = [...messages, userMessage]
     setMessages(updated)
@@ -255,10 +268,10 @@ if (readyMatch) {
 
       let replyText = data.reply
       const readyMatch = replyText.match(/\[?READY_TO_TEST:\s*(.+?)\]?$/im)
-if (readyMatch) {
-  setReadyToTest(readyMatch[1].trim())
-  replyText = replyText.replace(/\[?READY_TO_TEST:\s*.+?\]?$/im, '').trim()
-}
+      if (readyMatch) {
+        setReadyToTest(readyMatch[1].trim())
+        replyText = replyText.replace(/\[?READY_TO_TEST:\s*.+?\]?$/im, '').trim()
+      }
 
       const aiMessage: Message = { role: 'assistant', content: replyText }
       setMessages([...updated, aiMessage])
@@ -288,8 +301,90 @@ if (readyMatch) {
 
   function handleTestYourself(type: 'mcq' | 'flashcards' | 'exam') {
     if (!readyToTest) return
+    if (type === 'mcq') {
+      generateInlineMCQ()
+      return
+    }
     const params = new URLSearchParams({ topic: readyToTest, subject: 'General', auto: 'true' })
     router.push(`/${type}?${params.toString()}`)
+  }
+
+  async function generateInlineMCQ() {
+    if (!readyToTest) return
+    setInlineMCQ({ questions: [], selected: [], submitted: false, score: 0, loading: true })
+    try {
+      const res = await fetch('/api/mcq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: 'General', topic: readyToTest, count: inlineMCQCount })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setInlineMCQ({
+        questions: data.questions,
+        selected: new Array(data.questions.length).fill(''),
+        submitted: false,
+        score: 0,
+        loading: false
+      })
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    } catch {
+      setInlineMCQ(null)
+    }
+  }
+
+  function handleInlineSelect(qIndex: number, opt: string) {
+    if (!inlineMCQ || inlineMCQ.submitted) return
+    const updated = [...inlineMCQ.selected]
+    updated[qIndex] = opt
+    setInlineMCQ({ ...inlineMCQ, selected: updated })
+  }
+
+  async function handleInlineSubmit() {
+    if (!inlineMCQ) return
+    let score = 0
+    const wrong: { question: string; selected: string; correct: string }[] = []
+    inlineMCQ.questions.forEach((q, i) => {
+      if (inlineMCQ.selected[i] === q.correct) {
+        score++
+      } else {
+        wrong.push({ question: q.question, selected: inlineMCQ.selected[i], correct: q.correct })
+      }
+    })
+    setInlineMCQ({ ...inlineMCQ, submitted: true, score })
+
+    // Send MCQ results to tutor as context
+    const resultMsg = `MCQ Results: ${score}/${inlineMCQ.questions.length} on ${readyToTest}.${wrong.length > 0 ? ` Wrong answers:\n${wrong.map(w => `- "${w.question}" — I answered "${w.selected}" but correct was "${w.correct}"`).join('\n')}` : ' Got everything correct!'}`
+
+    const userMessage: Message = { role: 'user', content: resultMsg }
+    const updated = [...messages, userMessage]
+    setMessages(updated)
+    setLoading(true)
+
+    try {
+      const res = await fetch('/api/tutor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: updated, profile })
+      })
+      const data = await res.json()
+      let replyText = data.reply
+      const readyMatch = replyText.match(/\[?READY_TO_TEST:\s*(.+?)\]?$/im)
+      if (readyMatch) {
+        setReadyToTest(readyMatch[1].trim())
+        replyText = replyText.replace(/\[?READY_TO_TEST:\s*.+?\]?$/im, '').trim()
+      }
+      const aiMessage: Message = { role: 'assistant', content: replyText }
+      setMessages([...updated, aiMessage])
+      await supabase.from('tutor_messages').insert([
+        { chat_id: chatId, role: 'user', content: resultMsg },
+        { chat_id: chatId, role: 'assistant', content: aiMessage.content }
+      ])
+    } catch {
+      // silent fail — MCQ results still show
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -412,6 +507,7 @@ if (readyMatch) {
               <span className="dot" style={{ animationDelay: '300ms' }} />
             </div>
           )}
+
           {readyToTest && !loading && (
             <div style={{
               background: 'rgba(168,85,247,0.06)',
@@ -427,7 +523,7 @@ if (readyMatch) {
               <p className="text-xs mb-3" style={{ color: '#9ca3af' }}>
                 You've got a solid understanding of <strong>{readyToTest}</strong>. Want to lock it in?
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button onClick={() => handleTestYourself('flashcards')} style={{
                   background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
                   borderRadius: '10px', padding: '8px 14px', cursor: 'pointer',
@@ -436,14 +532,35 @@ if (readyMatch) {
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.15)'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'}
                 >▦ Flashcards</button>
+
                 <button onClick={() => handleTestYourself('mcq')} style={{
                   background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
-                  borderRadius: '10px', padding: '8px 14px', cursor: 'pointer',
-                  fontSize: '0.8rem', fontWeight: '600', color: '#a855f7', transition: 'all 0.15s'
+                  borderRadius: '10px', padding: '0', cursor: 'pointer',
+                  fontSize: '0.8rem', fontWeight: '600', color: '#a855f7',
+                  transition: 'all 0.15s', display: 'flex', alignItems: 'center', overflow: 'hidden'
                 }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.15)'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'}
-                >◈ MCQ Practice</button>
+                >
+                  <span style={{ padding: '8px 10px 8px 14px' }}>◈ MCQ</span>
+                  <span style={{ width: '1px', background: 'rgba(168,85,247,0.2)', alignSelf: 'stretch' }} />
+                  <select
+                    value={inlineMCQCount}
+                    onChange={e => { e.stopPropagation(); setInlineMCQCount(Number(e.target.value)) }}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      background: 'transparent', border: 'none', outline: 'none',
+                      padding: '8px 10px', fontSize: '0.8rem', color: '#a855f7',
+                      fontWeight: '600', cursor: 'pointer'
+                    }}
+                  >
+                    <option value={5}>5 Qs</option>
+                    <option value={10}>10 Qs</option>
+                    <option value={15}>15 Qs</option>
+                    <option value={20}>20 Qs</option>
+                  </select>
+                </button>
+
                 <button onClick={() => handleTestYourself('exam')} style={{
                   background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
                   borderRadius: '10px', padding: '8px 14px', cursor: 'pointer',
@@ -455,6 +572,106 @@ if (readyMatch) {
               </div>
             </div>
           )}
+
+          {/* Inline MCQ */}
+          {inlineMCQ && (
+            <div style={{
+              background: 'rgba(255,255,255,0.85)',
+              border: '1px solid #e8e0f0',
+              borderRadius: '16px',
+              padding: '20px',
+              alignSelf: 'stretch',
+              marginTop: '8px'
+            }}>
+              {inlineMCQ.loading ? (
+                <p className="text-sm animate-pulse" style={{ color: '#a855f7', textAlign: 'center' }}>Generating questions...</p>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold mb-4" style={{ color: '#1a1a2e' }}>
+                    ◈ Quick MCQ — {readyToTest}
+                  </p>
+                  {inlineMCQ.submitted && (
+                    <div style={{
+                      background: inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.8) ? 'rgba(16,185,129,0.06)' : inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.6) ? 'rgba(168,85,247,0.06)' : 'rgba(239,68,68,0.06)',
+                      border: `1px solid ${inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.8) ? 'rgba(16,185,129,0.2)' : inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.6) ? 'rgba(168,85,247,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                      borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center'
+                    }}>
+                      <p style={{ fontSize: '1.4rem', fontWeight: '700', color: inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.8) ? '#10b981' : inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.6) ? '#a855f7' : '#ef4444' }}>
+                        {inlineMCQ.score} / {inlineMCQ.questions.length}
+                      </p>
+                      <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>
+                        {inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.8) ? '🎉 Great job!' : inlineMCQ.score >= Math.ceil(inlineMCQ.questions.length * 0.6) ? '👍 Good effort!' : '📚 Keep studying!'}
+                      </p>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {inlineMCQ.questions.map((q, i) => (
+                      <div key={i}>
+                        <p style={{ fontSize: '0.8rem', fontWeight: '600', color: '#1a1a2e', marginBottom: '8px' }}>
+                          <span style={{ color: '#a855f7' }}>{i + 1}. </span>{q.question}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {q.options.map((opt, j) => {
+                            let bg = 'rgba(255,255,255,0.6)'
+                            let border = '1px solid #e8e0f0'
+                            let color = '#1a1a2e'
+                            if (inlineMCQ.submitted) {
+                              if (opt === q.correct) { bg = 'rgba(16,185,129,0.08)'; border = '1px solid #10b981'; color = '#059669' }
+                              else if (opt === inlineMCQ.selected[i]) { bg = 'rgba(239,68,68,0.08)'; border = '1px solid #ef4444'; color = '#dc2626' }
+                            } else if (inlineMCQ.selected[i] === opt) {
+                              bg = 'rgba(168,85,247,0.08)'; border = '1px solid #a855f7'; color = '#9333ea'
+                            }
+                            return (
+                              <button key={j}
+                                disabled={inlineMCQ.submitted}
+                                onClick={() => handleInlineSelect(i, opt)}
+                                style={{
+                                  width: '100%', textAlign: 'left', padding: '8px 12px',
+                                  borderRadius: '8px', border, background: bg, color,
+                                  fontSize: '0.8rem', cursor: inlineMCQ.submitted ? 'default' : 'pointer',
+                                  transition: 'all 0.15s', display: 'block'
+                                }}
+                              >{opt}</button>
+                            )
+                          })}
+                        </div>
+                        {inlineMCQ.submitted && (
+                          <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '6px' }}>
+                            💡 {q.explanation}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {!inlineMCQ.submitted && (
+                    <button
+                      onClick={handleInlineSubmit}
+                      disabled={inlineMCQ.selected.includes('')}
+                      style={{
+                        marginTop: '16px', width: '100%', padding: '10px',
+                        background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                        color: 'white', fontWeight: '600', fontSize: '0.85rem',
+                        borderRadius: '10px', border: 'none', cursor: 'pointer',
+                        opacity: inlineMCQ.selected.includes('') ? 0.4 : 1
+                      }}
+                    >Submit Answers</button>
+                  )}
+                  {inlineMCQ.submitted && (
+                    <button
+                      onClick={() => setInlineMCQ(null)}
+                      style={{
+                        marginTop: '12px', width: '100%', padding: '10px',
+                        background: 'rgba(168,85,247,0.08)', color: '#a855f7',
+                        fontWeight: '600', fontSize: '0.85rem', borderRadius: '10px',
+                        border: '1px solid rgba(168,85,247,0.2)', cursor: 'pointer'
+                      }}
+                    >Close</button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
 

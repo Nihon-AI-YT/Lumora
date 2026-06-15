@@ -79,10 +79,10 @@ export async function POST(req: NextRequest) {
   try {
     let questions
     try {
-      questions = await tryGemini(subject, topic, count, difficulty)
-    } catch (geminiError) {
-      console.warn('Gemini failed, falling back to Groq:', geminiError)
       questions = await tryGroq(subject, topic, count, difficulty)
+    } catch (groqError) {
+      console.warn('Groq failed, falling back to Gemini:', groqError)
+      questions = await tryGemini(subject, topic, count, difficulty)
     }
     return NextResponse.json({ questions })
   } catch (error) {
