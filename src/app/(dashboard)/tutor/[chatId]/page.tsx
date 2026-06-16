@@ -130,6 +130,11 @@ export default function ChatPage() {
     score: number
     loading: boolean
   } | null>(null)
+  const [inlineFlashcards, setInlineFlashcards] = useState<{
+    cards: { front: string; back: string }[]
+    flipped: number | null
+    loading: boolean
+  } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const autoSentRef = useRef(false)
 
@@ -145,6 +150,10 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [inlineMCQ])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [inlineFlashcards])
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -252,6 +261,7 @@ export default function ChatPage() {
   async function sendMessage() {
     if (!input.trim() || loading) return
     setInlineMCQ(null)
+    setInlineFlashcards(null)
     const userMessage: Message = { role: 'user', content: input }
     const updated = [...messages, userMessage]
     setMessages(updated)
@@ -305,13 +315,37 @@ export default function ChatPage() {
       generateInlineMCQ()
       return
     }
+    if (type === 'flashcards') {
+      generateInlineFlashcards()
+      return
+    }
     const params = new URLSearchParams({ topic: readyToTest, subject: 'General', auto: 'true' })
     router.push(`/${type}?${params.toString()}`)
+  }
+
+  async function generateInlineFlashcards() {
+    if (!readyToTest) return
+    setInlineFlashcards({ cards: [], flipped: null, loading: true })
+    setInlineMCQ(null)
+    try {
+      const res = await fetch('/api/flashcards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: 'General', topic: readyToTest, count: 8 })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setInlineFlashcards({ cards: data.cards, flipped: null, loading: false })
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    } catch {
+      setInlineFlashcards(null)
+    }
   }
 
   async function generateInlineMCQ() {
     if (!readyToTest) return
     setInlineMCQ({ questions: [], selected: [], submitted: false, score: 0, loading: true })
+    setInlineFlashcards(null)
     try {
       const res = await fetch('/api/mcq', {
         method: 'POST',
@@ -570,6 +604,65 @@ export default function ChatPage() {
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'}
                 >📝 Mock Exam</button>
               </div>
+            </div>
+          )}
+
+          {/* Inline Flashcards */}
+          {inlineFlashcards && (
+            <div style={{
+              background: 'rgba(255,255,255,0.85)',
+              border: '1px solid #e8e0f0',
+              borderRadius: '16px',
+              padding: '20px',
+              alignSelf: 'stretch',
+              marginTop: '8px'
+            }}>
+              {inlineFlashcards.loading ? (
+                <p className="text-sm animate-pulse" style={{ color: '#a855f7', textAlign: 'center' }}>Generating flashcards...</p>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <p className="text-sm font-semibold" style={{ color: '#1a1a2e' }}>▦ Flashcards — {readyToTest}</p>
+                    <p style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{inlineFlashcards.cards.length} cards · click to flip</p>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                    {inlineFlashcards.cards.map((card, i) => (
+                      <div key={i}
+                        onClick={() => setInlineFlashcards({ ...inlineFlashcards, flipped: inlineFlashcards.flipped === i ? null : i })}
+                        style={{
+                          cursor: 'pointer',
+                          background: inlineFlashcards.flipped === i ? 'rgba(168,85,247,0.06)' : 'rgba(255,255,255,0.7)',
+                          border: inlineFlashcards.flipped === i ? '1px solid #a855f7' : '1px solid #e8e0f0',
+                          borderRadius: '12px', padding: '14px',
+                          minHeight: '100px', display: 'flex', flexDirection: 'column',
+                          justifyContent: 'space-between', transition: 'all 0.15s'
+                        }}
+                      >
+                        <div>
+                          <p style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: inlineFlashcards.flipped === i ? '#a855f7' : '#9ca3af', marginBottom: '6px' }}>
+                            {inlineFlashcards.flipped === i ? 'Answer' : `Card ${i + 1}`}
+                          </p>
+                          <p style={{ fontSize: '0.8rem', color: '#1a1a2e', lineHeight: '1.5' }}>
+                            {inlineFlashcards.flipped === i ? card.back : card.front}
+                          </p>
+                        </div>
+                        <p style={{ fontSize: '0.68rem', color: '#c4b5d4', marginTop: '8px' }}>
+                          {inlineFlashcards.flipped === i ? 'Click to see question' : 'Click to reveal answer'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setInlineFlashcards(null)}
+                    style={{
+                      width: '100%', padding: '10px',
+                      background: 'rgba(168,85,247,0.08)', color: '#a855f7',
+                      fontWeight: '600', fontSize: '0.85rem', borderRadius: '10px',
+                      border: '1px solid rgba(168,85,247,0.2)', cursor: 'pointer'
+                    }}
+                  >Close</button>
+                </>
+              )}
             </div>
           )}
 
