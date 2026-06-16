@@ -12,8 +12,8 @@ interface Question {
 
 export default function MCQPage() {
   const searchParams = useSearchParams()
-  const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
+  const [detectedSubject, setDetectedSubject] = useState('')
   const [pdfName, setPdfName] = useState('')
   const [sourceLabel, setSourceLabel] = useState('')
   const [ytUrl, setYtUrl] = useState('')
@@ -27,18 +27,15 @@ export default function MCQPage() {
 
   useEffect(() => {
     const autoTopic = searchParams.get('topic')
-    const autoSubject = searchParams.get('subject')
     const auto = searchParams.get('auto')
     if (autoTopic && auto === 'true') {
       setTopic(autoTopic)
-      if (autoSubject) setSubject(autoSubject)
-      generateQuestions(autoTopic, autoSubject || 'General')
+      generateQuestions(autoTopic)
     }
   }, [])
 
-  const generateQuestions = async (overrideTopic?: string, overrideSubject?: string) => {
+  const generateQuestions = async (overrideTopic?: string) => {
     const activeTopic = overrideTopic || topic
-    const activeSubject = overrideSubject || subject || 'General'
     if (!activeTopic) return
     setLoading(true)
     setQuestions([])
@@ -50,12 +47,13 @@ export default function MCQPage() {
       const res = await fetch('/api/mcq', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: activeSubject, topic: activeTopic, count: 5 })
+        body: JSON.stringify({ topic: activeTopic, count: 5 })
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setQuestions(data.questions)
       setSelected(new Array(data.questions.length).fill(''))
+      setDetectedSubject(data.subject || '')
     } catch {
       setError('Failed to generate questions. Try again.')
     } finally {
@@ -67,6 +65,7 @@ export default function MCQPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setPdfName(file.name)
+    setSourceLabel('')
     setError('')
     setLoading(true)
     setQuestions([])
@@ -76,14 +75,11 @@ export default function MCQPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('/api/extract-pdf', {
-        method: 'POST',
-        body: formData
-      })
+      const res = await fetch('/api/extract-pdf', { method: 'POST', body: formData })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setTopic(data.text)
-      await generateQuestions(data.text, subject || 'General')
+      await generateQuestions(data.text)
     } catch {
       setError('Failed to read PDF. Try again.')
       setLoading(false)
@@ -110,7 +106,7 @@ export default function MCQPage() {
       setPdfName('')
       setTopic(data.text)
       setYtUrl('')
-      await generateQuestions(data.text, subject || 'General')
+      await generateQuestions(data.text)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to fetch transcript. Try again.')
     } finally {
@@ -126,11 +122,7 @@ export default function MCQPage() {
       if (selected[i] === q.correct) {
         s++
       } else {
-        wrongQuestions.push({
-          question: q.question,
-          selected: selected[i],
-          correct: q.correct
-        })
+        wrongQuestions.push({ question: q.question, selected: selected[i], correct: q.correct })
       }
     })
 
@@ -143,7 +135,7 @@ export default function MCQPage() {
       if (user) {
         await supabase.from('mcq_attempts').insert({
           user_id: user.id,
-          subject: subject || 'General',
+          subject: detectedSubject || 'General',
           topic: pdfName || topic.slice(0, 100),
           score: s,
           total: questions.length,
@@ -199,6 +191,19 @@ export default function MCQPage() {
           gap: 6px;
         }
         .pdf-btn:hover { border-color: #a855f7; color: #a855f7; }
+        .subject-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(168,85,247,0.08);
+          border: 1px solid rgba(168,85,247,0.2);
+          color: #9333ea;
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 5px 12px;
+          border-radius: 20px;
+          margin-bottom: 12px;
+        }
         .question-card {
           background: rgba(255,255,255,0.75);
           backdrop-filter: blur(12px);
@@ -283,22 +288,12 @@ export default function MCQPage() {
 
       <div className="max-w-2xl mx-auto">
 
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1" style={{ color: '#1a1a2e' }}>MCQ Practice</h1>
-          <p className="text-sm" style={{ color: '#9ca3af' }}>AI-generated exam-style questions with instant feedback</p>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>AI-generated exam-style questions with instant feedback — subject detected automatically</p>
         </div>
 
-        {/* Controls */}
         <div className="flex gap-3 mb-3">
-          <input
-            type="text"
-            placeholder="Subject — e.g. Physics"
-            value={subject}
-            onChange={e => setSubject(e.target.value)}
-            className="mcq-input"
-            style={{ width: '200px' }}
-          />
           <input
             type="text"
             placeholder="Topic — e.g. Newton's Laws"
@@ -312,7 +307,6 @@ export default function MCQPage() {
           </button>
         </div>
 
-        {/* PDF + YouTube */}
         <div className="flex flex-col gap-3 mb-8">
           <div className="flex items-center gap-3">
             <label className="pdf-btn">
@@ -330,26 +324,21 @@ export default function MCQPage() {
               onKeyDown={e => e.key === 'Enter' && handleYouTube()}
               className="mcq-input flex-1"
             />
-            <button
-              onClick={handleYouTube}
-              disabled={ytLoading || !ytUrl}
-              className="mcq-btn"
-            >
+            <button onClick={handleYouTube} disabled={ytLoading || !ytUrl} className="mcq-btn">
               {ytLoading ? 'Fetching...' : '▶ YouTube'}
             </button>
           </div>
         </div>
 
         {error && (
-  <div className="flex items-center gap-3 mb-4">
-    <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
-    <button onClick={() => generateQuestions()} className="mcq-btn" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-      Retry
-    </button>
-  </div>
-)}
+          <div className="flex items-center gap-3 mb-4">
+            <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
+            <button onClick={() => generateQuestions()} className="mcq-btn" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+              Retry
+            </button>
+          </div>
+        )}
 
-        {/* Score */}
         {submitted && (
           <div className="score-card">
             <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#9ca3af' }}>Your Score</p>
@@ -367,12 +356,11 @@ export default function MCQPage() {
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && questions.length === 0 && (
           <div className="empty-state">
             <div className="empty-icon">◈</div>
             <p className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>No questions yet</p>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a subject and topic, or upload a PDF</p>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a topic, upload a PDF, or paste a YouTube link</p>
           </div>
         )}
 
@@ -385,9 +373,9 @@ export default function MCQPage() {
           </div>
         )}
 
-        {/* Questions */}
         {questions.length > 0 && (
           <div className="flex flex-col gap-4">
+            {detectedSubject && <span className="subject-pill">📚 {detectedSubject}</span>}
             {questions.map((q, i) => (
               <div key={i} className="question-card">
                 <p className="text-sm font-semibold mb-4" style={{ color: '#1a1a2e' }}>
@@ -427,11 +415,7 @@ export default function MCQPage() {
             ))}
 
             {!submitted && (
-              <button
-                onClick={handleSubmit}
-                disabled={selected.includes('')}
-                className="submit-btn"
-              >
+              <button onClick={handleSubmit} disabled={selected.includes('')} className="submit-btn">
                 Submit Answers
               </button>
             )}

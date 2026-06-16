@@ -25,13 +25,12 @@ function renderMath(text: string) {
 }
 
 function CardText({ text }: { text: string }) {
-  // Render code blocks
   const parts = text.split(/(```[\s\S]*?```|`[^`]+`)/g)
   return (
     <>
       {parts.map((part, i) => {
         if (part.startsWith('```') && part.endsWith('```')) {
-          const code = part.slice(3, -3).replace(/^\w+\n/, '') // strip language tag
+          const code = part.slice(3, -3).replace(/^\w+\n/, '')
           return (
             <pre key={i} style={{
               background: 'rgba(168,85,247,0.06)',
@@ -68,31 +67,28 @@ function CardText({ text }: { text: string }) {
 
 export default function FlashcardsPage() {
   const searchParams = useSearchParams()
-  const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
+  const [detectedSubject, setDetectedSubject] = useState('')
   const [cards, setCards] = useState<Card[]>([])
   const [flipped, setFlipped] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-const [pdfName, setPdfName] = useState('')
+  const [pdfName, setPdfName] = useState('')
   const [sourceLabel, setSourceLabel] = useState('')
   const [ytUrl, setYtUrl] = useState('')
   const [ytLoading, setYtLoading] = useState(false)
 
   useEffect(() => {
     const autoTopic = searchParams.get('topic')
-    const autoSubject = searchParams.get('subject')
     const auto = searchParams.get('auto')
     if (autoTopic && auto === 'true') {
       setTopic(autoTopic)
-      if (autoSubject) setSubject(autoSubject)
-      generateCards(autoTopic, autoSubject || 'General')
+      generateCards(autoTopic)
     }
   }, [])
 
-  const generateCards = async (overrideTopic?: string, overrideSubject?: string) => {
+  const generateCards = async (overrideTopic?: string) => {
     const activeTopic = overrideTopic || topic
-    const activeSubject = overrideSubject || subject || 'General'
     if (!activeTopic) return
     setLoading(true)
     setError('')
@@ -102,11 +98,12 @@ const [pdfName, setPdfName] = useState('')
       const res = await fetch('/api/flashcards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: activeSubject, topic: activeTopic, count: 8 })
+        body: JSON.stringify({ topic: activeTopic, count: 8 })
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setCards(data.cards)
+      setDetectedSubject(data.subject || '')
     } catch {
       setError('Failed to generate cards. Try again.')
     } finally {
@@ -117,7 +114,7 @@ const [pdfName, setPdfName] = useState('')
   const handlePDF = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-setPdfName(file.name)
+    setPdfName(file.name)
     setSourceLabel('')
     setError('')
     setLoading(true)
@@ -126,14 +123,11 @@ setPdfName(file.name)
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('/api/extract-pdf', {
-        method: 'POST',
-        body: formData
-      })
+      const res = await fetch('/api/extract-pdf', { method: 'POST', body: formData })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setTopic(data.text)
-      await generateCards(data.text, subject || 'General')
+      await generateCards(data.text)
     } catch {
       setError('Failed to read PDF. Try again.')
       setLoading(false)
@@ -154,10 +148,10 @@ setPdfName(file.name)
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-setSourceLabel(`▶ ${data.title}`)
+      setSourceLabel(`▶ ${data.title}`)
       setPdfName('')
       setTopic(data.text)
-      await generateCards(data.text, subject || 'General')
+      await generateCards(data.text)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to fetch transcript. Try again.')
     } finally {
@@ -209,6 +203,18 @@ setSourceLabel(`▶ ${data.title}`)
           gap: 6px;
         }
         .pdf-btn:hover { border-color: #a855f7; color: #a855f7; }
+        .subject-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(168,85,247,0.08);
+          border: 1px solid rgba(168,85,247,0.2);
+          color: #9333ea;
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 5px 12px;
+          border-radius: 20px;
+        }
         .card-wrap {
           cursor: pointer;
           background: rgba(255,255,255,0.75);
@@ -254,12 +260,10 @@ setSourceLabel(`▶ ${data.title}`)
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1" style={{ color: '#1a1a2e' }}>Flashcards</h1>
-          <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart flashcards from a topic or upload a PDF</p>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart flashcards from a topic or upload a PDF — subject is detected automatically</p>
         </div>
 
         <div className="flex gap-3 mb-3">
-          <input type="text" placeholder="Subject — e.g. Physics, History" value={subject}
-            onChange={e => setSubject(e.target.value)} className="fc-input" style={{ width: '220px' }} />
           <input type="text" placeholder="Topic — e.g. Newton's Laws"
             value={sourceLabel || pdfName || topic}
             onChange={e => { setTopic(e.target.value); setPdfName(''); setSourceLabel('') }}
@@ -287,11 +291,7 @@ setSourceLabel(`▶ ${data.title}`)
               onKeyDown={e => e.key === 'Enter' && handleYouTube()}
               className="fc-input flex-1"
             />
-            <button
-              onClick={handleYouTube}
-              disabled={ytLoading || !ytUrl}
-              className="fc-btn"
-            >
+            <button onClick={handleYouTube} disabled={ytLoading || !ytUrl} className="fc-btn">
               {ytLoading ? 'Fetching...' : '▶ YouTube'}
             </button>
           </div>
@@ -303,7 +303,7 @@ setSourceLabel(`▶ ${data.title}`)
           <div className="empty-state">
             <div className="empty-icon">▦</div>
             <p className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>No cards yet</p>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a subject and topic, or upload a PDF</p>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Enter a topic, upload a PDF, or paste a YouTube link</p>
           </div>
         )}
 
@@ -318,9 +318,12 @@ setSourceLabel(`▶ ${data.title}`)
 
         {cards.length > 0 && (
           <>
-            <p className="text-xs uppercase tracking-wider mb-4" style={{ color: '#9ca3af' }}>
-              {cards.length} cards — click any card to flip
-            </p>
+            <div className="flex items-center gap-3 mb-4">
+              {detectedSubject && <span className="subject-pill">📚 {detectedSubject}</span>}
+              <p className="text-xs uppercase tracking-wider" style={{ color: '#9ca3af' }}>
+                {cards.length} cards — click any card to flip
+              </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {cards.map((card, i) => (
                 <div key={i} onClick={() => setFlipped(flipped === i ? null : i)}
