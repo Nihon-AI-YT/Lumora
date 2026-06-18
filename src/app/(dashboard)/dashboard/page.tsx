@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import ExamCountdown from '@/components/ExamCountdown'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -10,6 +11,12 @@ export default async function DashboardPage() {
     .select('full_name, streak_count, level')
     .eq('id', user!.id)
     .single()
+
+  const { data: exams } = await supabase
+    .from('exams')
+    .select('*')
+    .eq('user_id', user!.id)
+    .order('exam_date', { ascending: true })
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -62,6 +69,9 @@ export default async function DashboardPage() {
           <p className="text-sm" style={{ color: '#9ca3af' }}>Pick up where you left off.</p>
         </div>
 
+        {/* Exam Countdown */}
+        <ExamCountdown exams={exams || []} />
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-10">
           <div className="stat-card">
@@ -85,23 +95,17 @@ export default async function DashboardPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9ca3af' }}>Start Learning</h2>
         <div className="grid grid-cols-3 gap-4">
           <Link href="/tutor" className="action-card">
-            <div className="icon-wrap" style={{ background: 'rgba(168,85,247,0.10)' }}>
-              ✦
-            </div>
+            <div className="icon-wrap" style={{ background: 'rgba(168,85,247,0.10)' }}>✦</div>
             <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>AI Tutor</h3>
             <p className="text-sm" style={{ color: '#9ca3af' }}>Ask anything, get clear explanations instantly</p>
           </Link>
           <Link href="/flashcards" className="action-card">
-            <div className="icon-wrap" style={{ background: 'rgba(99,102,241,0.10)' }}>
-              ▦
-            </div>
+            <div className="icon-wrap" style={{ background: 'rgba(99,102,241,0.10)' }}>▦</div>
             <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Flashcards</h3>
             <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart cards for any topic</p>
           </Link>
           <Link href="/mcq" className="action-card">
-            <div className="icon-wrap" style={{ background: 'rgba(16,185,129,0.10)' }}>
-              ◈
-            </div>
+            <div className="icon-wrap" style={{ background: 'rgba(16,185,129,0.10)' }}>◈</div>
             <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>MCQ Practice</h3>
             <p className="text-sm" style={{ color: '#9ca3af' }}>Exam-style questions with instant feedback</p>
           </Link>

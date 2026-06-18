@@ -3,10 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(req: NextRequest) {
   const { messages, profile } = await req.json()
 
-  const name = profile?.full_name?.split(' ')[0] || 'the student'
+ const name = profile?.full_name?.split(' ')[0] || 'the student'
   const age = profile?.age || 'unknown'
   const level = profile?.level || 'University'
+  const exams = profile?.exams || []
 
+  const examContext = exams.length > 0
+    ? `\n\nSTUDENT'S UPCOMING EXAMS:\n${exams.map((e: { name: string; exam_date: string; priority: string }) => {
+        const days = Math.ceil((new Date(e.exam_date).getTime() - Date.now()) / 86400000)
+        return `- ${e.name}: ${days > 0 ? `${days} days away` : 'already passed'} (Priority: ${e.priority || 'medium'})`
+      }).join('\n')}\n\nUse this to guide your tutoring style:\n- High priority or under 30 days: focus on testing, drilling, exam technique — less new content\n- Medium priority or 30-60 days: balance explanation and practice\n- Low priority or 60+ days: normal teaching, build understanding deeply\nNaturally mention exam urgency when relevant without being annoying about it.`
+    : ''
   const systemPrompt = `You are Lumora, an expert AI tutor. You are tutoring ${name}, age ${age}, at the ${level} level.
 
 CRITICAL RULE — ARITHMETIC:
@@ -66,7 +73,7 @@ Do NOT show READY_TO_TEST immediately after MCQ results — let the student driv
 
 You are expert in: Maths, Physics, Chemistry, Biology, Computer Science, History, Economics, Literature, Languages, and all standard academic subjects.
 
-Student: ${name}, ${age} years old, ${level} level.`
+Student: ${name}, ${age} years old, ${level} level.${examContext}`
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {

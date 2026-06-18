@@ -120,7 +120,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [profile, setProfile] = useState<{ full_name: string, age: number, level: string } | null>(null)
+ const [profile, setProfile] = useState<{ full_name: string, age: number, level: string, exams?: { name: string, exam_date: string, priority: string }[] } | null>(null)
   const [readyToTest, setReadyToTest] = useState<string | null>(null)
   const [inlineMCQCount, setInlineMCQCount] = useState(5)
   const [inlineMCQ, setInlineMCQ] = useState<{
@@ -163,7 +163,12 @@ export default function ChatPage() {
       .select('full_name, age, level')
       .eq('id', user.id)
       .single()
-    if (data) setProfile(data)
+    const { data: exams } = await supabase
+      .from('exams')
+      .select('name, exam_date, priority')
+      .eq('user_id', user.id)
+      .order('exam_date', { ascending: true })
+    if (data) setProfile({ ...data, exams: exams || [] })
   }
 
   async function loadChat() {

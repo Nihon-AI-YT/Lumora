@@ -29,6 +29,42 @@ export default function Sidebar({ name, userId }: Props) {
   const [mounted, setMounted] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [exams, setExams] = useState<{ id: string; name: string; exam_date: string }[]>([])
+  const [newExamName, setNewExamName] = useState('')
+  const [newExamDate, setNewExamDate] = useState('')
+
+  useEffect(() => {
+    if (settingsOpen) loadExams()
+  }, [settingsOpen])
+
+  async function loadExams() {
+    const res = await fetch('/api/exams')
+    const data = await res.json()
+    if (data.exams) setExams(data.exams)
+  }
+  async function addExam() {
+    if (!newExamName || !newExamDate) return
+    const res = await fetch('/api/exams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newExamName, exam_date: newExamDate })
+    })
+    const data = await res.json()
+    if (data.exam) {
+      setExams(prev => [...prev, data.exam].sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()))
+      setNewExamName('')
+      setNewExamDate('')
+    }
+  }
+
+  async function deleteExam(id: string) {
+    await fetch('/api/exams', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    })
+    setExams(prev => prev.filter(e => e.id !== id))
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -200,6 +236,9 @@ export default function Sidebar({ name, userId }: Props) {
             >🌙 Dark (soon)</button>
           </div>
         </div>
+
+        {/* Sign out */}
+        
 
         {/* Sign out */}
         <div style={{ borderTop: '1px solid #e8e0f0', paddingTop: '16px', marginTop: '8px' }}>
