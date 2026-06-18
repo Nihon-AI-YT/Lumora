@@ -29,7 +29,7 @@ Requirements:
 
 async function tryGemini(subject: string | null, topic: string, count: number, difficulty: string) {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
     {
       method: 'POST',
       headers: {

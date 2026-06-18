@@ -320,6 +320,15 @@ const learnWithTutor = async (t: WeakTopic) => {
                           >
                             {creatingChat === t.topic ? 'Opening...' : '📚 Learn with Tutor'}
                           </button>
+                          {t.wrongQuestions.length > 0 && (
+                            <button
+                              className="learn-btn"
+                              style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}
+                              onClick={() => router.push(`/mcq?topic=${encodeURIComponent(t.topic)}&subject=${encodeURIComponent(t.subject)}&mode=drill`)}
+                            >
+                              💪 Train Weak Areas
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="weak-bar-bg">

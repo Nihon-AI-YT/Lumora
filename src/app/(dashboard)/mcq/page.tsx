@@ -24,15 +24,69 @@ export default function MCQPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [score, setScore] = useState(0)
+  const [isDrillMode, setIsDrillMode] = useState(false)
 
   useEffect(() => {
     const autoTopic = searchParams.get('topic')
     const auto = searchParams.get('auto')
-    if (autoTopic && auto === 'true') {
+    const mode = searchParams.get('mode')
+    const subjectParam = searchParams.get('subject')
+
+    if (mode === 'drill' && autoTopic && subjectParam) {
+      generateDrillQuestions(autoTopic, subjectParam)
+    } else if (autoTopic && auto === 'true') {
       setTopic(autoTopic)
       generateQuestions(autoTopic)
     }
   }, [])
+
+  const generateDrillQuestions = async (drillTopic: string, drillSubject: string) => {
+    setLoading(true)
+    setQuestions([])
+    setSelected([])
+    setSubmitted(false)
+    setScore(0)
+    setError('')
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: attempts } = await supabase
+        .from('mcq_attempts')
+        .select('wrong_questions, created_at')
+        .eq('user_id', user.id)
+        .eq('subject', drillSubject)
+        .eq('topic', drillTopic)
+        .order('created_at', { ascending: false })
+
+      const allWrong = (attempts || []).flatMap(a => a.wrong_questions || [])
+      const capped = allWrong.slice(0, 15)
+
+      if (capped.length === 0) {
+        setError('No past mistakes found for this topic yet.')
+        setLoading(false)
+        return
+      }
+
+      const res = await fetch('/api/mcq-drill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: drillSubject, topic: drillTopic, wrongQuestions: capped, count: 5 })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setQuestions(data.questions)
+      setSelected(new Array(data.questions.length).fill(''))
+      setDetectedSubject(drillSubject)
+      setTopic(drillTopic)
+      setIsDrillMode(true)
+    } catch {
+      setError('Failed to generate drill questions. Try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const generateQuestions = async (overrideTopic?: string) => {
     const activeTopic = overrideTopic || topic
@@ -139,7 +193,8 @@ export default function MCQPage() {
           topic: pdfName || topic.slice(0, 100),
           score: s,
           total: questions.length,
-          wrong_questions: wrongQuestions
+          wrong_questions: wrongQuestions,
+          source: isDrillMode ? 'drill' : 'practice'
         })
       }
     } catch (err) {
