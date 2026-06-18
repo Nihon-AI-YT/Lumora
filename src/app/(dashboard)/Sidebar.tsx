@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-
+import Image from 'next/image'
 interface Chat {
   id: string
   title: string
@@ -350,16 +350,7 @@ export default function Sidebar({ name, userId }: Props) {
 
         {/* Logo */}
         <div className="flex items-center gap-2 px-3 mb-8">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="url(#lg)"/>
-            <defs>
-              <linearGradient id="lg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#a855f7"/>
-                <stop offset="1" stopColor="#ec4899"/>
-              </linearGradient>
-            </defs>
-            <text x="9" y="23" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="18" fill="white">L</text>
-          </svg>
+          <Image src="/lumora-nebula.png" alt="Lumora" width={32} height={32} className="object-contain" />
           <span className="font-bold text-lg" style={{ color: '#1a1a2e' }}>Lumora</span>
         </div>
 

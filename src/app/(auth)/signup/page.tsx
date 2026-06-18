@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -147,16 +148,7 @@ export default function SignupPage() {
       <main className="auth-page">
         <div className="auth-card">
           <div className="auth-logo">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="32" height="32" rx="8" fill="url(#lg2)"/>
-              <defs>
-                <linearGradient id="lg2" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#a855f7"/>
-                  <stop offset="1" stopColor="#ec4899"/>
-                </linearGradient>
-              </defs>
-              <text x="9" y="23" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="18" fill="white">L</text>
-            </svg>
+            <Image src="/lumora-nebula.png" alt="Lumora" width={32} height={32} className="object-contain" />
             <span className="auth-logo-text">Lumora</span>
           </div>
 
