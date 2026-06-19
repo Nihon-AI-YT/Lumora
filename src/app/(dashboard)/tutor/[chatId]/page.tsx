@@ -27,7 +27,7 @@ function renderMarkdown(text: string): string {
     .replace(/^#{1,3}\s*$/gm, '')
 }
 
-function AIBubble({ content }: { content: string }) {
+function AIBubble({ content, onSave }: { content: string, onSave?: () => void }) {
   const [copied, setCopied] = useState(false)
   const [reaction, setReaction] = useState<'up' | 'down' | null>(null)
   const [showEmoji, setShowEmoji] = useState<'up' | 'down' | null>(null)
@@ -86,6 +86,18 @@ function AIBubble({ content }: { content: string }) {
         >
           {copied ? '✓ Copied' : '📋 Copy'}
         </button>
+        {onSave && (
+          <button
+            onClick={onSave}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px',
+              borderRadius: '6px', color: '#9ca3af', fontSize: '0.75rem', transition: 'all 0.15s',
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(168,85,247,0.08)'; (e.currentTarget as HTMLElement).style.color = '#a855f7' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = '#9ca3af' }}
+          >📌 Save to Notes</button>
+        )}
         <button
           onClick={() => handleReaction('up')}
           style={{
@@ -121,6 +133,11 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
  const [profile, setProfile] = useState<{ full_name: string, age: number, level: string, exams?: { name: string, exam_date: string, priority: string }[] } | null>(null)
+  const [subjects, setSubjects] = useState<{ id: string; name: string; topics: { id: string; name: string }[] }[]>([])
+  const [saveModal, setSaveModal] = useState<{ content: string } | null>(null)
+  const [saveSubjectId, setSaveSubjectId] = useState('')
+  const [saveTopicId, setSaveTopicId] = useState('')
+  const [saving, setSaving] = useState(false)
   const [readyToTest, setReadyToTest] = useState<string | null>(null)
   const [inlineMCQCount, setInlineMCQCount] = useState(5)
   const [inlineMCQ, setInlineMCQ] = useState<{
@@ -141,6 +158,7 @@ export default function ChatPage() {
   useEffect(() => {
     loadChat()
     loadProfile()
+    loadSubjects()
   }, [chatId])
 
   useEffect(() => {
@@ -154,6 +172,32 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [inlineFlashcards])
+
+  async function loadSubjects() {
+    const res = await fetch('/api/subjects')
+    const data = await res.json()
+    if (!data.subjects) return
+    const withTopics = await Promise.all(data.subjects.map(async (s: { id: string; name: string }) => {
+      const res = await fetch(`/api/topics?subject_id=${s.id}`)
+      const data = await res.json()
+      return { ...s, topics: data.topics || [] }
+    }))
+    setSubjects(withTopics)
+  }
+
+  async function saveNoteToTopic() {
+    if (!saveModal || !saveTopicId) return
+    setSaving(true)
+    await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic_id: saveTopicId, type: 'ai', content: saveModal.content })
+    })
+    setSaving(false)
+    setSaveModal(null)
+    setSaveSubjectId('')
+    setSaveTopicId('')
+  }
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -536,7 +580,7 @@ export default function ChatPage() {
             m.role === 'user' ? (
               <div key={i} className="bubble-user">{m.content}</div>
             ) : (
-              <AIBubble key={i} content={m.content} />
+              <AIBubble key={i} content={m.content} onSave={() => setSaveModal({ content: m.content })} />
             )
           ))}
           {loading && (
@@ -787,6 +831,71 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
+    {/* Save to Topic Modal */}
+      {saveModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)'
+        }} onMouseDown={() => setSaveModal(null)}>
+          <div style={{
+            background: 'white', borderRadius: '20px', padding: '28px',
+            width: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+            border: '1px solid #e8e0f0'
+          }} onMouseDown={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a1a2e', margin: 0 }}>📌 Save to Notes</h2>
+              <button onClick={() => setSaveModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1.1rem' }}>✕</button>
+            </div>
+
+            <div style={{ background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.12)', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px' }}>
+              <p style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.5 }}>{saveModal.content.slice(0, 120)}...</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <p style={{ fontSize: '0.72rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Subject</p>
+                <select
+                  value={saveSubjectId}
+                  onChange={e => { setSaveSubjectId(e.target.value); setSaveTopicId('') }}
+                  style={{ width: '100%', border: '1px solid #e8e0f0', borderRadius: '10px', padding: '10px 14px', fontSize: '0.875rem', color: '#1a1a2e', outline: 'none', background: 'white' }}
+                >
+                  <option value=''>Select a subject...</option>
+                  {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+
+              {saveSubjectId && (
+                <div>
+                  <p style={{ fontSize: '0.72rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Topic</p>
+                  <select
+                    value={saveTopicId}
+                    onChange={e => setSaveTopicId(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #e8e0f0', borderRadius: '10px', padding: '10px 14px', fontSize: '0.875rem', color: '#1a1a2e', outline: 'none', background: 'white' }}
+                  >
+                    <option value=''>Select a topic...</option>
+                    {subjects.find(s => s.id === saveSubjectId)?.topics.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <button
+                onClick={saveNoteToTopic}
+                disabled={saving || !saveTopicId}
+                style={{
+                  width: '100%', padding: '11px',
+                  background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                  color: 'white', border: 'none', borderRadius: '10px',
+                  fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
+                  opacity: !saveTopicId ? 0.5 : 1, marginTop: '4px'
+                }}
+              >{saving ? 'Saving...' : 'Save Note'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
