@@ -127,11 +127,11 @@ export default async function DashboardPage() {
             <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>My Review</h3>
             <p className="text-sm" style={{ color: '#9ca3af' }}>Weak topics and drill mode</p>
           </Link>
-          <div className="section-card" style={{ opacity: 0.5, cursor: 'default' }}>
-            <div style={{ fontSize: '24px', marginBottom: '10px' }}>📈</div>
-            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>My Progress</h3>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Weekly report — coming soon</p>
-          </div>
+          <Link href="/study-plan" className="section-card">
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>📅</div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Study Plan</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>AI-generated 4-week plan</p>
+          </Link>
           <div className="section-card" style={{ opacity: 0.5, cursor: 'default' }}>
             <div style={{ fontSize: '24px', marginBottom: '10px' }}>🏆</div>
             <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Achievements</h3>
