@@ -15,7 +15,38 @@ export default async function DashboardPage() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const name = profile?.full_name?.split(' ')[0] || 'there'
-  const streakCount = profile?.streak_count || 0
+
+  // Update streak on dashboard visit
+  const supabaseClient = await createClient()
+  const streakRes = await supabaseClient
+    .from('profiles')
+    .select('streak_count, last_active')
+    .eq('id', user!.id)
+    .single()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const lastActive = streakRes.data?.last_active ? new Date(streakRes.data.last_active) : null
+  if (lastActive) lastActive.setHours(0, 0, 0, 0)
+  const todayStr = today.toISOString().split('T')[0]
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  let newStreak = 1
+  if (lastActive && lastActive.getTime() === today.getTime()) {
+    newStreak = streakRes.data?.streak_count || 1
+  } else if (lastActive && lastActive.getTime() === yesterday.getTime()) {
+    newStreak = (streakRes.data?.streak_count || 0) + 1
+  }
+
+  if (!lastActive || lastActive.getTime() !== today.getTime()) {
+    await supabaseClient
+      .from('profiles')
+      .update({ streak_count: newStreak, last_active: todayStr })
+      .eq('id', user!.id)
+  }
+
+  const streakCount = newStreak
 
   return (
     <>

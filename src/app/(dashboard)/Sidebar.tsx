@@ -389,8 +389,8 @@ export default function Sidebar({ name, userId }: Props) {
 
         {/* Logo */}
         <div className="flex items-center gap-2 px-3 mb-8">
-          <Image src="/lumora-nebula.png" alt="Lumora" width={32} height={32} className="object-contain" />
-          <span className="font-bold text-lg" style={{ color: '#1a1a2e' }}>Lumora</span>
+          <Image src="/lumora-nebula.png" alt="Lumora" width={44} height={44} className="object-contain" />
+          <span className="font-bold text-xl" style={{ color: '#1a1a2e' }}>Lumora</span>
         </div>
 
         {/* Main nav */}
