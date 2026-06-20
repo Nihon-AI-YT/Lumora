@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import ExamCountdown from '@/components/ExamCountdown'
+import WidgetZone from '@/components/dashboard/WidgetZone'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -12,26 +12,14 @@ export default async function DashboardPage() {
     .eq('id', user!.id)
     .single()
 
-  const { data: exams } = await supabase
-    .from('exams')
-    .select('*')
-    .eq('user_id', user!.id)
-    .order('exam_date', { ascending: true })
-
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const name = profile?.full_name?.split(' ')[0] || 'there'
+  const streakCount = profile?.streak_count || 0
 
   return (
     <>
       <style>{`
-        .stat-card {
-          background: rgba(255,255,255,0.7);
-          backdrop-filter: blur(12px);
-          border: 1px solid #e8e0f0;
-          border-radius: 16px;
-          padding: 20px 24px;
-        }
         .action-card {
           background: rgba(255,255,255,0.7);
           backdrop-filter: blur(12px);
@@ -56,43 +44,74 @@ export default async function DashboardPage() {
           margin-bottom: 14px;
           font-size: 18px;
         }
+        .section-card {
+          background: rgba(255,255,255,0.7);
+          backdrop-filter: blur(12px);
+          border: 1px solid #e8e0f0;
+          border-radius: 16px;
+          padding: 20px 24px;
+          text-decoration: none;
+          display: block;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .section-card:hover {
+          border-color: #a855f7;
+          box-shadow: 0 4px 24px rgba(168,85,247,0.10);
+        }
       `}</style>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
 
         {/* Header */}
-        <div className="mb-10">
+        <div className="mb-8">
           <p className="text-sm font-medium mb-1" style={{ color: '#a855f7' }}>{greeting}</p>
           <h1 className="text-3xl font-bold mb-1" style={{ color: '#1a1a2e' }}>
             What do you want to <span style={{ fontStyle: 'italic' }}>learn</span>, {name}?
           </h1>
-          <p className="text-sm" style={{ color: '#9ca3af' }}>Pick up where you left off.</p>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>Your personal study dashboard.</p>
         </div>
 
-        {/* Exam Countdown */}
-        <ExamCountdown exams={exams || []} />
+        {/* Widget Zone */}
+        <div className="mb-10">
+          <WidgetZone streakCount={streakCount} userName={name} />
+        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
-          <div className="stat-card">
-            <p className="text-xs uppercase tracking-wider mb-3" style={{ color: '#9ca3af' }}>Daily Streak</p>
-            <p className="text-2xl font-bold" style={{ color: '#f59e0b' }}>
-              {profile?.streak_count || 0}
-              <span className="text-base ml-1">🔥</span>
-            </p>
+        {/* My Sections */}
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9ca3af' }}>
+          My Sections
+        </h2>
+        <div className="grid grid-cols-5 gap-4 mb-10">
+          <Link href="/subjects" className="section-card">
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>📚</div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>My Subjects</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Topics, notes and progress</p>
+          </Link>
+          <Link href="/exams" className="section-card">
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>📝</div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>My Exams</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Countdowns and priorities</p>
+          </Link>
+          <Link href="/review" className="section-card">
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>🎯</div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>My Review</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Weak topics and drill mode</p>
+          </Link>
+          <div className="section-card" style={{ opacity: 0.5, cursor: 'default' }}>
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>📈</div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>My Progress</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Weekly report — coming soon</p>
           </div>
-          <div className="stat-card">
-            <p className="text-xs uppercase tracking-wider mb-3" style={{ color: '#9ca3af' }}>Cards to Review</p>
-            <p className="text-2xl font-bold" style={{ color: '#a855f7' }}>0</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-xs uppercase tracking-wider mb-3" style={{ color: '#9ca3af' }}>MCQs Done Today</p>
-            <p className="text-2xl font-bold" style={{ color: '#10b981' }}>0</p>
+          <div className="section-card" style={{ opacity: 0.5, cursor: 'default' }}>
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>🏆</div>
+            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Achievements</h3>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>Badges — coming soon</p>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9ca3af' }}>Start Learning</h2>
+        {/* Start Learning */}
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9ca3af' }}>
+          Start Learning
+        </h2>
         <div className="grid grid-cols-3 gap-4">
           <Link href="/tutor" className="action-card">
             <div className="icon-wrap" style={{ background: 'rgba(168,85,247,0.10)' }}>✦</div>

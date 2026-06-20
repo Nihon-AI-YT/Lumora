@@ -21,12 +21,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { name, exam_date } = await req.json()
+  const { name, exam_date, priority } = await req.json()
   if (!name || !exam_date) return NextResponse.json({ error: 'Name and date required' }, { status: 400 })
 
   const { data, error } = await supabase
     .from('exams')
-    .insert({ user_id: user.id, name, exam_date })
+    .insert({ user_id: user.id, name, exam_date, priority: priority || 'medium' })
     .select()
     .single()
 
