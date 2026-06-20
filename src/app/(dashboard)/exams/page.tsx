@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface Exam {
   id: string
@@ -22,7 +21,6 @@ export default function ExamsPage() {
   const [form, setForm] = useState({ name: '', exam_date: '', priority: 'medium' })
   const [editingExam, setEditingExam] = useState<Exam | null>(null)
   const [editForm, setEditForm] = useState({ name: '', exam_date: '', priority: 'medium' })
-  const router = useRouter()
 
   const load = async () => {
     const res = await fetch('/api/exams')
@@ -52,6 +50,19 @@ export default function ExamsPage() {
     load()
   }
 
+  const saveEdit = async () => {
+    if (!editingExam || !editForm.name || !editForm.exam_date) return
+    setSaving(true)
+    await fetch('/api/exams', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingExam.id, ...editForm })
+    })
+    setEditingExam(null)
+    setSaving(false)
+    load()
+  }
+
   const deleteExam = async (id: string) => {
     await fetch('/api/exams', {
       method: 'DELETE',
@@ -59,6 +70,15 @@ export default function ExamsPage() {
       body: JSON.stringify({ id })
     })
     load()
+  }
+
+  const openEdit = (exam: Exam) => {
+    setEditingExam(exam)
+    setEditForm({
+      name: exam.name,
+      exam_date: exam.exam_date,
+      priority: exam.priority
+    })
   }
 
   const sorted = [...exams].sort((a, b) => {
@@ -143,7 +163,6 @@ export default function ExamsPage() {
                 <div key={exam.id} className="exam-card">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      {/* Days counter */}
                       <div style={{
                         minWidth: '72px', height: '72px', borderRadius: '14px',
                         background: past ? '#f5f5f5' : priorityBg[exam.priority],
@@ -162,7 +181,6 @@ export default function ExamsPage() {
                         </span>
                       </div>
 
-                      {/* Info */}
                       <div>
                         <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '16px', color: past ? '#9ca3af' : '#1a1a2e' }}>
                           {exam.name}
@@ -181,13 +199,16 @@ export default function ExamsPage() {
                       </div>
                     </div>
 
-                    {/* Delete */}
-                    <button onClick={() => deleteExam(exam.id)} style={{
-                      background: 'none', border: '1px solid #e8e0f0', borderRadius: '8px',
-                      padding: '6px 10px', cursor: 'pointer', color: '#9ca3af', fontSize: '13px'
-                    }}>
-                      🗑
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => openEdit(exam)} style={{
+                        background: 'white', border: '1px solid #e8e0f0', borderRadius: '8px',
+                        padding: '6px 10px', cursor: 'pointer', color: '#9ca3af', fontSize: '13px'
+                      }}>✏️</button>
+                      <button onClick={() => deleteExam(exam.id)} style={{
+                        background: 'white', border: '1px solid #e8e0f0', borderRadius: '8px',
+                        padding: '6px 10px', cursor: 'pointer', color: '#9ca3af', fontSize: '13px'
+                      }}>🗑</button>
+                    </div>
                   </div>
                 </div>
               )
@@ -212,51 +233,79 @@ export default function ExamsPage() {
                 background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#9ca3af'
               }}>✕</button>
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>
-                  Exam Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Physics A/L, Combined Maths Paper 1"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                />
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>Exam Name</label>
+                <input type="text" placeholder="e.g. Physics A/L, Combined Maths Paper 1"
+                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
-
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>
-                  Exam Date
-                </label>
-                <input
-                  type="date"
-                  value={form.exam_date}
-                  onChange={e => setForm(f => ({ ...f, exam_date: e.target.value }))}
-                />
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>Exam Date</label>
+                <input type="date" value={form.exam_date} onChange={e => setForm(f => ({ ...f, exam_date: e.target.value }))} />
               </div>
-
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>
-                  Priority
-                </label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>Priority</label>
                 <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
                   <option value="high">🔴 High — most important exam</option>
                   <option value="medium">🟡 Medium — important but manageable</option>
                   <option value="low">🟢 Low — least urgent</option>
                 </select>
               </div>
-
               <button onClick={addExam} disabled={saving || !form.name || !form.exam_date} style={{
                 width: '100%', padding: '12px', borderRadius: '12px', border: 'none',
                 cursor: saving ? 'not-allowed' : 'pointer',
                 background: 'linear-gradient(135deg, #a855f7, #ec4899)',
                 color: 'white', fontWeight: 700, fontSize: '14px',
-                opacity: (!form.name || !form.exam_date) ? 0.6 : 1,
-                marginTop: '4px'
+                opacity: (!form.name || !form.exam_date) ? 0.6 : 1, marginTop: '4px'
               }}>
                 {saving ? 'Saving...' : 'Add Exam'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Exam Modal */}
+      {editingExam && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', padding: '28px',
+            width: '100%', maxWidth: '420px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#1a1a2e' }}>Edit Exam</h3>
+              <button onClick={() => setEditingExam(null)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#9ca3af'
+              }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>Exam Name</label>
+                <input type="text" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>Exam Date</label>
+                <input type="date" value={editForm.exam_date} onChange={e => setEditForm(f => ({ ...f, exam_date: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1a1a2e', marginBottom: '6px' }}>Priority</label>
+                <select value={editForm.priority} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))}>
+                  <option value="high">🔴 High </option>
+                  <option value="medium">🟡 Medium </option>
+                  <option value="low">🟢 Low </option>
+                </select>
+              </div>
+              <button onClick={saveEdit} disabled={saving || !editForm.name || !editForm.exam_date} style={{
+                width: '100%', padding: '12px', borderRadius: '12px', border: 'none',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                color: 'white', fontWeight: 700, fontSize: '14px',
+                opacity: (!editForm.name || !editForm.exam_date) ? 0.6 : 1, marginTop: '4px'
+              }}>
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
