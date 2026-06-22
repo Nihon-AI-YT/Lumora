@@ -20,7 +20,7 @@ export default function SignupPage() {
   const handleGoogleSignup = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/onboarding` }
+      options: { scopes: 'email', redirectTo: `https://lumora-mauve-nine.vercel.app/auth/callback?next=/onboarding` }
     })
     if (error) setError(error.message)
   }
@@ -28,7 +28,7 @@ export default function SignupPage() {
   const handleMicrosoftSignup = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
-      options: { scopes: 'email', redirectTo: `${window.location.origin}/onboarding` }
+      options: { scopes: 'email', redirectTo: `https://lumora-mauve-nine.vercel.app/auth/callback?next=/onboarding` }
     })
     if (error) setError(error.message)
   }
