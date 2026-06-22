@@ -139,27 +139,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Start Learning */}
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9ca3af' }}>
-          Start Learning
-        </h2>
-        <div className="grid grid-cols-3 gap-4">
-          <Link href="/tutor" className="action-card">
-            <div className="icon-wrap" style={{ background: 'rgba(168,85,247,0.10)' }}>✦</div>
-            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>AI Tutor</h3>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Ask anything, get clear explanations instantly</p>
-          </Link>
-          <Link href="/flashcards" className="action-card">
-            <div className="icon-wrap" style={{ background: 'rgba(99,102,241,0.10)' }}>▦</div>
-            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Flashcards</h3>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Generate smart cards for any topic</p>
-          </Link>
-          <Link href="/mcq" className="action-card">
-            <div className="icon-wrap" style={{ background: 'rgba(16,185,129,0.10)' }}>◈</div>
-            <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>MCQ Practice</h3>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Exam-style questions with instant feedback</p>
-          </Link>
-        </div>
+        
 
       </div>
     </>
