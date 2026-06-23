@@ -34,36 +34,44 @@ export default function SignupPage() {
   }
 
   const handleSendOtp = async () => {
-    if (!fullName.trim()) { setError('Please enter your full name'); return }
-    if (!email.trim()) { setError('Please enter your email'); return }
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, data: { full_name: fullName } }
-    })
-    if (error) { setError(error.message); setLoading(false) }
-    else { setMessage(`OTP sent to ${email}`); setStep('otp'); setLoading(false) }
-  }
+  if (!fullName.trim()) { setError('Please enter your full name'); return }
+  if (!email.trim()) { setError('Please enter your email'); return }
+  setLoading(true)
+  setError('')
+  const res = await fetch('/api/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, type: 'signup' })
+  })
+  const data = await res.json()
+  if (!res.ok) { setError(data.error || 'Failed to send OTP'); setLoading(false) }
+  else { setMessage(`OTP sent to ${email}`); setStep('otp'); setLoading(false) }
+}
 
   const handleVerifyOtp = async () => {
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' })
-    if (error) { setError(error.message); setLoading(false) }
-    else { setStep('password'); setLoading(false) }
-  }
+  setLoading(true)
+  setError('')
+  const res = await fetch('/api/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp, type: 'signup' })
+  })
+  const data = await res.json()
+  if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false) }
+  else { setStep('password'); setLoading(false) }
+}
 
   const handleSetPassword = async () => {
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.updateUser({
-      password,
-      data: { full_name: fullName }
-    })
-    if (error) { setError(error.message); setLoading(false) }
-    else router.push('/onboarding')
-  }
+  setLoading(true)
+  setError('')
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName } }
+  })
+  if (error) { setError(error.message); setLoading(false) }
+  else router.push('/onboarding')
+}
 
   return (
     <>

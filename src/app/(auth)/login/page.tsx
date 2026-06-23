@@ -44,18 +44,25 @@ export default function LoginPage() {
   const handleForgotSendOtp = async () => {
   setLoading(true)
   setError('')
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: false }
+  const res = await fetch('/api/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, type: 'reset' })
   })
-  if (error) { setError(error.message); setLoading(false) }
+  const data = await res.json()
+  if (!res.ok) { setError(data.error || 'Failed to send OTP'); setLoading(false) }
   else { setMessage('OTP sent to your email'); setStep('forgot-otp'); setLoading(false) }
 }
   const handleVerifyOtp = async () => {
   setLoading(true)
   setError('')
-  const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' })
-  if (error) { setError(error.message); setLoading(false) }
+  const res = await fetch('/api/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp, type: 'reset' })
+  })
+  const data = await res.json()
+  if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false) }
   else { setStep('reset-password'); setLoading(false) }
 }
 
