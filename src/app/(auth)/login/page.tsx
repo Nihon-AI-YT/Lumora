@@ -62,8 +62,16 @@ export default function LoginPage() {
     body: JSON.stringify({ email, otp, type: 'reset' })
   })
   const data = await res.json()
-  if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false) }
-  else { setStep('reset-choice'); setLoading(false) }
+  if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false); return }
+  
+  // Create a Supabase session after OTP verify
+  const { error: sessionError } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false }
+  })
+  if (sessionError) { setError(sessionError.message); setLoading(false); return }
+  setStep('reset-choice')
+  setLoading(false)
 }
 
   const handleResetPassword = async () => {
@@ -261,12 +269,7 @@ export default function LoginPage() {
     <h1 className="auth-title">You're verified! 🎉</h1>
     <p className="auth-sub">What would you like to do?</p>
     {error && <p className="auth-error">{error}</p>}
-    <button onClick={async () => {
-      setLoading(true)
-      const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
-      if (error) { setError(error.message); setLoading(false) }
-      else router.push('/dashboard')
-    }} disabled={loading} className="auth-btn" style={{ marginBottom: '10px' }}>
+    <button onClick={() => router.push('/dashboard')} disabled={loading} className="auth-btn" style={{ marginBottom: '10px' }}>
       {loading ? 'Logging in...' : 'Log in now'}
     </button>
     <button onClick={() => setStep('reset-password')} className="auth-btn" style={{ background: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
