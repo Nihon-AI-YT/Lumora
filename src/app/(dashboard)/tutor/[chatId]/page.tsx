@@ -151,7 +151,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [profile, setProfile] = useState<{ full_name: string, age: number, level: string, exams?: { name: string, exam_date: string, priority: string }[] } | null>(null)
+  const [profile, setProfile] = useState<{ full_name: string, age: number, level: string, streak_count?: number, exams?: { name: string, exam_date: string, priority: string }[], weakTopics?: { subject: string, topic: string, score: number, total: number }[], minutesToday?: number } | null>(null)
   const [subjects, setSubjects] = useState<{ id: string; name: string; topics: { id: string; name: string }[] }[]>([])
   const [saveModal, setSaveModal] = useState<{ content: string } | null>(null)
   const [saveSubjectId, setSaveSubjectId] = useState('')
@@ -209,12 +209,26 @@ export default function ChatPage() {
   }
 
   async function loadProfile() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data } = await supabase.from('profiles').select('full_name, age, level').eq('id', user.id).single()
-    const { data: exams } = await supabase.from('exams').select('name, exam_date, priority').eq('user_id', user.id).order('exam_date', { ascending: true })
-    if (data) setProfile({ ...data, exams: exams || [] })
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const { data } = await supabase.from('profiles').select('full_name, age, level, streak_count').eq('id', user.id).single()
+  const { data: exams } = await supabase.from('exams').select('name, exam_date, priority').eq('user_id', user.id).order('exam_date', { ascending: true })
+  
+  // Get weak topics from mcq_attempts (last 30 days, score < 70%)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: attempts } = await supabase.from('mcq_attempts').select('subject, topic, score, total').eq('user_id', user.id).gte('created_at', thirtyDaysAgo)
+  
+  const weakTopics = (attempts || [])
+    .filter(a => a.total > 0 && (a.score / a.total) < 0.7)
+    .slice(0, 5)
+
+  // Get minutes studied today
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+  const { data: sessions } = await supabase.from('study_sessions').select('minutes').eq('user_id', user.id).gte('created_at', todayStart.toISOString())
+  const minutesToday = (sessions || []).reduce((sum, s) => sum + s.minutes, 0)
+
+  if (data) setProfile({ ...data, exams: exams || [], weakTopics, minutesToday })
+}
 
   async function loadChat() {
     const { data } = await supabase.from('tutor_messages').select('role, content').eq('chat_id', chatId).order('created_at', { ascending: true })
