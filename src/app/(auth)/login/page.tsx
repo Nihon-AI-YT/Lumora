@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export default function LoginPage() {
-  const [step, setStep] = useState<'login' | 'forgot-email' | 'forgot-otp' | 'reset-password'>('login')
+  const [step, setStep] = useState<'login' | 'forgot-email' | 'forgot-otp' | 'reset-choice' | 'reset-password'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
@@ -63,19 +63,16 @@ export default function LoginPage() {
   })
   const data = await res.json()
   if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false) }
-  else { setStep('reset-password'); setLoading(false) }
+  else { setStep('reset-choice'); setLoading(false) }
 }
 
   const handleResetPassword = async () => {
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) { 
-  setError('No account found with this email, or you signed up with Google/Microsoft. Try signing in with those instead.')
-  setLoading(false) 
+  setLoading(true)
+  setError('')
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) { setError(error.message); setLoading(false) }
+  else router.push('/dashboard')
 }
-    else router.push('/dashboard')
-  }
 
   return (
     <>
@@ -258,6 +255,25 @@ export default function LoginPage() {
               </button>
             </>
           )}
+
+          {step === 'reset-choice' && (
+  <>
+    <h1 className="auth-title">You're verified! 🎉</h1>
+    <p className="auth-sub">What would you like to do?</p>
+    {error && <p className="auth-error">{error}</p>}
+    <button onClick={async () => {
+      setLoading(true)
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
+      if (error) { setError(error.message); setLoading(false) }
+      else router.push('/dashboard')
+    }} disabled={loading} className="auth-btn" style={{ marginBottom: '10px' }}>
+      {loading ? 'Logging in...' : 'Log in now'}
+    </button>
+    <button onClick={() => setStep('reset-password')} className="auth-btn" style={{ background: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
+      Set a new password
+    </button>
+  </>
+)}
 
           {step === 'reset-password' && (
             <>
