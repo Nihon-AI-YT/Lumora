@@ -63,7 +63,10 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) { setError(error.message); setLoading(false) }
+    if (error) { 
+  setError('No account found with this email, or you signed up with Google/Microsoft. Try signing in with those instead.')
+  setLoading(false) 
+}
     else router.push('/dashboard')
   }
 
