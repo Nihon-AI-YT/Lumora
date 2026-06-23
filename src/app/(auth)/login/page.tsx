@@ -42,22 +42,22 @@ export default function LoginPage() {
   }
 
   const handleForgotSendOtp = async () => {
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`
-    })
-    if (error) { setError(error.message); setLoading(false) }
-    else { setMessage('OTP sent to your email'); setStep('forgot-otp'); setLoading(false) }
-  }
-
+  setLoading(true)
+  setError('')
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false }
+  })
+  if (error) { setError(error.message); setLoading(false) }
+  else { setMessage('OTP sent to your email'); setStep('forgot-otp'); setLoading(false) }
+}
   const handleVerifyOtp = async () => {
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'recovery' })
-    if (error) { setError(error.message); setLoading(false) }
-    else { setStep('reset-password'); setLoading(false) }
-  }
+  setLoading(true)
+  setError('')
+  const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' })
+  if (error) { setError(error.message); setLoading(false) }
+  else { setStep('reset-password'); setLoading(false) }
+}
 
   const handleResetPassword = async () => {
     setLoading(true)
