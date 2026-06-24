@@ -64,13 +64,19 @@ export default function SignupPage() {
   const handleSetPassword = async () => {
   setLoading(true)
   setError('')
-  const { error } = await supabase.auth.signUp({
+  // First sign up the user
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName } }
   })
-  if (error) { setError(error.message); setLoading(false) }
-  else router.push('/onboarding')
+  if (error) { setError(error.message); setLoading(false); return }
+  
+  // Then sign them in immediately
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+  if (signInError) { setError(signInError.message); setLoading(false); return }
+  
+  router.push('/onboarding')
 }
 
   return (
