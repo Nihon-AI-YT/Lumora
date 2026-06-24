@@ -36,7 +36,7 @@ export default function LoginPage() {
   const handleMicrosoftLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
-      options: { scopes: 'email', redirectTo: `${window.location.origin}/dashboard` }
+      options: { scopes: 'email', redirectTo: `https://lumora-mauve-nine.vercel.app/auth/callback` }
     })
     if (error) setError(error.message)
   }
