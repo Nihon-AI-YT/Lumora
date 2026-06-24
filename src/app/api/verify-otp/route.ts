@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: NextRequest) {
   const { email, otp, type } = await req.json()
@@ -9,22 +13,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-        },
-      },
-    }
-  )
-
   // Get stored OTP
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('otp_codes')
     .select('otp, expires_at')
     .eq('email', email)
@@ -37,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   // Check expiry
   if (new Date(data.expires_at) < new Date()) {
-    await supabase.from('otp_codes').delete().eq('email', email).eq('type', type)
+    await supabaseAdmin.from('otp_codes').delete().eq('email', email).eq('type', type)
     return NextResponse.json({ error: 'Code has expired. Please request a new one.' }, { status: 400 })
   }
 
@@ -47,7 +37,21 @@ export async function POST(req: NextRequest) {
   }
 
   // Delete used OTP
-  await supabase.from('otp_codes').delete().eq('email', email).eq('type', type)
+  await supabaseAdmin.from('otp_codes').delete().eq('email', email).eq('type', type)
+
+  // For reset type — generate a magic link to create a real session
+  if (type === 'reset') {
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    })
+    if (linkError || !linkData) {
+      return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
+    }
+    // Return the token so client can verify it
+    const token = linkData.properties?.hashed_token
+    return NextResponse.json({ success: true, token, email })
+  }
 
   return NextResponse.json({ success: true })
 }

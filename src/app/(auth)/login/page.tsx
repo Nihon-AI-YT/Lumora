@@ -64,12 +64,10 @@ export default function LoginPage() {
   const data = await res.json()
   if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false); return }
   
-  // Create a Supabase session after OTP verify
-  const { error: sessionError } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: false }
-  })
-  if (sessionError) { setError(sessionError.message); setLoading(false); return }
+ // Use token from API to create real session
+  if (data.token) {
+    await supabase.auth.verifyOtp({ token_hash: data.token, type: 'magiclink' })
+  }
   setStep('reset-choice')
   setLoading(false)
 }
