@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export default function SignupPage() {
-  const [step, setStep] = useState<'details' | 'otp' | 'password'>('details')
+  const [step, setStep] = useState<'details' | 'otp' | 'password' | 'check-email'>('details')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
@@ -64,19 +64,14 @@ export default function SignupPage() {
   const handleSetPassword = async () => {
   setLoading(true)
   setError('')
-  // First sign up the user
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName } }
   })
   if (error) { setError(error.message); setLoading(false); return }
-  
-  // Then sign them in immediately
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-  if (signInError) { setError(signInError.message); setLoading(false); return }
-  
-  router.push('/onboarding')
+  setStep('check-email')
+  setLoading(false)
 }
 
   return (
@@ -263,6 +258,20 @@ export default function SignupPage() {
               </button>
             </>
           )}
+
+          {step === 'check-email' && (
+  <div style={{ textAlign: 'center' }}>
+    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📧</div>
+    <h1 className="auth-title">Check your email</h1>
+    <p className="auth-sub" style={{ marginBottom: '24px' }}>
+      We sent a confirmation link to <strong style={{ color: '#1a1a2e' }}>{email}</strong>. 
+      Click it to activate your account and get started.
+    </p>
+    <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '12px', padding: '14px 16px', fontSize: '0.8rem', color: '#6b7280' }}>
+      💡 Check your spam folder if you don't see it
+    </div>
+  </div>
+)}
         </div>
       </main>
     </>
