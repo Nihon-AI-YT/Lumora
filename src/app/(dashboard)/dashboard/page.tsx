@@ -157,11 +157,11 @@ export default async function DashboardPage() {
             <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Study Plan</h3>
             <p className="text-sm" style={{ color: '#9ca3af' }}>AI-generated 4-week plan</p>
           </Link>
-          <div className="section-card" style={{ opacity: 0.5, cursor: 'default' }}>
+          <Link href="/achievements" className="section-card">
             <div style={{ fontSize: '24px', marginBottom: '10px' }}>🏆</div>
             <h3 className="font-semibold mb-1" style={{ color: '#1a1a2e' }}>Achievements</h3>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>Badges — coming soon</p>
-          </div>
+            <p className="text-sm" style={{ color: '#9ca3af' }}>XP, levels & badges</p>
+          </Link>
         </div>
 
         

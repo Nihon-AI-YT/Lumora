@@ -521,15 +521,32 @@ export default function Sidebar({ name, userId }: Props) {
         </div>
 
         {/* Notification Bell */}
-        <div className="px-2 mb-2">
+        <div className="px-2 mb-3">
           <button
-            className="bell-btn"
             onClick={() => setNotifOpen(prev => !prev)}
-            title="Notifications"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              width: '100%', padding: '9px 12px', borderRadius: '12px',
+              fontSize: '14px', fontWeight: 500, color: '#6b7280',
+              background: 'none', border: '1px solid #e8e0f0', cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#a855f7'; e.currentTarget.style.color = '#9333ea' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e8e0f0'; e.currentTarget.style.color = '#6b7280' }}
           >
-            🔔
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span>Notifications</span>
             {unreadCount > 0 && (
-              <span className="bell-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              <span style={{
+                marginLeft: 'auto', minWidth: '18px', height: '18px',
+                background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                color: 'white', fontSize: '10px', fontWeight: 700,
+                borderRadius: '20px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', padding: '0 5px'
+              }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
             )}
           </button>
         </div>
