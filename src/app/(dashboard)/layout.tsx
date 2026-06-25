@@ -24,15 +24,13 @@ export default async function DashboardLayout({
   const name = profile?.full_name?.split(' ')[0] || 'there'
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar name={name} userId={user.id} />
-      <NotificationProvider>
+    <NotificationProvider>
+      <div className="flex min-h-screen">
+        <Sidebar name={name} userId={user.id} />
         <main className="flex-1 ml-56 p-8 min-h-screen">
           {children}
         </main>
-      </NotificationProvider><main className="flex-1 ml-56 p-8 min-h-screen">
-        {children}
-      </main>
-    </div>
+      </div>
+    </NotificationProvider>
   )
 }
