@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [step, setStep] = useState<'login' | 'forgot-email' | 'forgot-otp' | 'reset-choice' | 'reset-password'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [otp, setOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [error, setError] = useState('')
@@ -42,143 +44,411 @@ export default function LoginPage() {
   }
 
   const handleForgotSendOtp = async () => {
-  setLoading(true)
-  setError('')
-  const res = await fetch('/api/send-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, type: 'reset' })
-  })
-  const data = await res.json()
-  if (!res.ok) { setError(data.error || 'Failed to send OTP'); setLoading(false) }
-  else { setMessage('OTP sent to your email'); setStep('forgot-otp'); setLoading(false) }
-}
-  const handleVerifyOtp = async () => {
-  setLoading(true)
-  setError('')
-  const res = await fetch('/api/verify-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, otp, type: 'reset' })
-  })
-  const data = await res.json()
-  if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false); return }
-  
- // Use token from API to create real session
-  if (data.token) {
-    await supabase.auth.verifyOtp({ token_hash: data.token, type: 'magiclink' })
+    setLoading(true)
+    setError('')
+    const res = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, type: 'reset' })
+    })
+    const data = await res.json()
+    if (!res.ok) { setError(data.error || 'Failed to send OTP'); setLoading(false) }
+    else { setMessage('OTP sent to your email'); setStep('forgot-otp'); setLoading(false) }
   }
-  setStep('reset-choice')
-  setLoading(false)
-}
+
+  const handleVerifyOtp = async () => {
+    setLoading(true)
+    setError('')
+    const res = await fetch('/api/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, type: 'reset' })
+    })
+    const data = await res.json()
+    if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false); return }
+    if (data.token) {
+      await supabase.auth.verifyOtp({ token_hash: data.token, type: 'magiclink' })
+    }
+    setStep('reset-choice')
+    setLoading(false)
+  }
 
   const handleResetPassword = async () => {
-  setLoading(true)
-  setError('')
-  const { error } = await supabase.auth.updateUser({ password: newPassword })
-  if (error) { setError(error.message); setLoading(false) }
-  else router.push('/dashboard')
-}
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) { setError(error.message); setLoading(false) }
+    else router.push('/dashboard')
+  }
 
   return (
     <>
       <style>{`
-        .auth-page {
+        :root {
+          --bg-from: #faf5ff;
+          --bg-to: #fdf2f8;
+          --card-bg: rgba(255,255,255,0.82);
+          --card-border: rgba(168,85,247,0.12);
+          --text-primary: #0f0a1e;
+          --text-secondary: #6b7280;
+          --text-muted: #9ca3af;
+          --input-bg: rgba(255,255,255,0.9);
+          --input-border: #e5dff5;
+          --input-focus: #a855f7;
+          --divider: #ede9f5;
+          --error-bg: rgba(239,68,68,0.05);
+          --error-border: rgba(239,68,68,0.2);
+          --success-bg: rgba(16,185,129,0.05);
+          --success-border: rgba(16,185,129,0.2);
+          --accent: #a855f7;
+          --accent2: #ec4899;
+        }
+
+        * { box-sizing: border-box; }
+
+        .login-root {
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 24px;
-          background: linear-gradient(135deg, #faf5ff 0%, #fdf2f8 50%, #f0f9ff 100%);
           font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          background: linear-gradient(135deg, var(--bg-from) 0%, var(--bg-to) 60%, #f0f4ff 100%);
+          position: relative;
+          overflow: hidden;
         }
-        .auth-card {
+
+        .login-root::before {
+          content: '';
+          position: absolute;
+          width: 600px;
+          height: 600px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 70%);
+          top: -200px;
+          right: -200px;
+          pointer-events: none;
+        }
+
+        .login-root::after {
+          content: '';
+          position: absolute;
+          width: 400px;
+          height: 400px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(236,72,153,0.06) 0%, transparent 70%);
+          bottom: -100px;
+          left: -100px;
+          pointer-events: none;
+        }
+
+        .login-card {
           width: 100%;
-          max-width: 420px;
-          background: rgba(255,255,255,0.75);
-          backdrop-filter: blur(20px);
-          border: 1px solid #e8e0f0;
-          border-radius: 24px;
-          padding: 40px;
-          box-shadow: 0 8px 40px rgba(168,85,247,0.08);
+          max-width: 460px;
+          background: var(--card-bg);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid var(--card-border);
+          border-radius: 28px;
+          padding: 44px 40px;
+          box-shadow: 0 8px 48px rgba(168,85,247,0.1), 0 1px 0 rgba(255,255,255,0.8) inset;
+          position: relative;
+          z-index: 1;
         }
-        .auth-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 32px; }
-        .auth-logo-text { font-weight: 700; font-size: 1.1rem; color: #1a1a2e; }
-        .auth-title { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
-        .auth-sub { font-size: 0.875rem; color: #9ca3af; margin-bottom: 28px; }
-        .auth-input {
-          width: 100%; background: rgba(255,255,255,0.8); border: 1px solid #e8e0f0;
-          border-radius: 12px; padding: 12px 16px; font-size: 0.875rem; color: #1a1a2e;
-          outline: none; transition: border-color 0.15s; box-sizing: border-box; margin-bottom: 12px;
+
+        .login-brand {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          margin-bottom: 36px;
         }
-        .auth-input:focus { border-color: #a855f7; }
-        .auth-input::placeholder { color: #9ca3af; }
-        .auth-btn {
-          width: 100%; padding: 13px;
-          background: linear-gradient(135deg, #a855f7, #ec4899);
-          color: white; font-weight: 600; font-size: 0.9rem; border: none;
-          border-radius: 12px; cursor: pointer; transition: opacity 0.15s; margin-top: 4px;
+
+        .login-brand-img {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          object-fit: contain;
+          filter: drop-shadow(0 2px 8px rgba(168,85,247,0.3));
         }
-        .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .auth-btn:hover:not(:disabled) { opacity: 0.9; }
+
+        .login-brand-name {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: var(--text-primary);
+          letter-spacing: -0.02em;
+        }
+
+        .login-heading {
+          font-size: 1.4rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          letter-spacing: -0.03em;
+          margin: 0 0 6px 0;
+          line-height: 1.2;
+        }
+
+        .login-sub {
+          font-size: 0.9rem;
+          color: var(--text-muted);
+          margin: 0 0 28px 0;
+          line-height: 1.5;
+        }
+
         .oauth-btn {
-          width: 100%; padding: 12px; background: white; border: 1px solid #e8e0f0;
-          border-radius: 12px; cursor: pointer; font-size: 0.875rem; font-weight: 500;
-          color: #1a1a2e; display: flex; align-items: center; justify-content: center;
-          gap: 10px; transition: border-color 0.15s, box-shadow 0.15s; margin-bottom: 10px;
-          box-sizing: border-box;
+          width: 100%;
+          padding: 13px 16px;
+          background: white;
+          border: 1.5px solid var(--input-border);
+          border-radius: 14px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          transition: all 0.2s;
+          margin-bottom: 10px;
+          letter-spacing: -0.01em;
         }
-        .oauth-btn:hover { border-color: #a855f7; box-shadow: 0 2px 8px rgba(168,85,247,0.1); }
-        .divider {
-          display: flex; align-items: center; gap: 12px; margin: 18px 0;
-          color: #9ca3af; font-size: 0.8rem;
+
+        .oauth-btn:hover {
+          border-color: var(--accent);
+          box-shadow: 0 4px 16px rgba(168,85,247,0.12);
+          transform: translateY(-1px);
         }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e8e0f0; }
-        .auth-footer { text-align: center; font-size: 0.8rem; color: #9ca3af; margin-top: 20px; }
-        .auth-footer a { color: #a855f7; text-decoration: none; font-weight: 500; }
-        .auth-footer a:hover { text-decoration: underline; }
-        .auth-error {
-          font-size: 0.8rem; color: #ef4444; margin-bottom: 12px;
-          padding: 10px 14px; background: rgba(239,68,68,0.06);
-          border: 1px solid rgba(239,68,68,0.15); border-radius: 10px;
+
+        .divider-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin: 22px 0;
         }
-        .auth-message {
-          font-size: 0.8rem; color: #10b981; margin-bottom: 12px;
-          padding: 10px 14px; background: rgba(16,185,129,0.06);
-          border: 1px solid rgba(16,185,129,0.15); border-radius: 10px;
+
+        .divider-line {
+          flex: 1;
+          height: 1px;
+          background: var(--divider);
         }
+
+        .divider-text {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          font-weight: 500;
+          letter-spacing: 0.04em;
+        }
+
+        .input-wrap {
+          position: relative;
+          margin-bottom: 12px;
+        }
+
+        .login-input {
+          width: 100%;
+          background: var(--input-bg);
+          border: 1.5px solid var(--input-border);
+          border-radius: 14px;
+          padding: 13px 16px;
+          font-size: 0.9rem;
+          color: var(--text-primary);
+          outline: none;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+
+        .login-input:focus {
+          border-color: var(--input-focus);
+          box-shadow: 0 0 0 3px rgba(168,85,247,0.1);
+        }
+
+        .login-input::placeholder { color: var(--text-muted); }
+
+        .login-input.has-eye { padding-right: 48px; }
+
+        .eye-btn {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--text-muted);
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          transition: color 0.15s;
+        }
+
+        .eye-btn:hover { color: var(--accent); }
+
+        .forgot-row {
+          display: flex;
+          justify-content: flex-end;
+          margin: -4px 0 16px 0;
+        }
+
         .forgot-link {
-          text-align: right; font-size: 0.78rem; color: #a855f7;
-          cursor: pointer; margin-top: -4px; margin-bottom: 14px;
-          text-decoration: none; display: block;
+          font-size: 0.8rem;
+          color: var(--accent);
+          cursor: pointer;
+          font-weight: 500;
+          text-decoration: none;
+          transition: opacity 0.15s;
         }
-        .forgot-link:hover { text-decoration: underline; }
+
+        .forgot-link:hover { opacity: 0.75; }
+
+        .primary-btn {
+          width: 100%;
+          padding: 14px;
+          background: linear-gradient(135deg, var(--accent), var(--accent2));
+          color: white;
+          font-weight: 700;
+          font-size: 0.95rem;
+          border: none;
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          letter-spacing: -0.01em;
+          box-shadow: 0 4px 16px rgba(168,85,247,0.3);
+        }
+
+        .primary-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 24px rgba(168,85,247,0.4);
+        }
+
+        .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .secondary-btn {
+          width: 100%;
+          padding: 14px;
+          background: rgba(168,85,247,0.07);
+          color: var(--accent);
+          font-weight: 600;
+          font-size: 0.95rem;
+          border: 1.5px solid rgba(168,85,247,0.2);
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          letter-spacing: -0.01em;
+          margin-top: 10px;
+        }
+
+        .secondary-btn:hover { background: rgba(168,85,247,0.12); border-color: var(--accent); }
+
+        .auth-footer {
+          text-align: center;
+          font-size: 0.82rem;
+          color: var(--text-muted);
+          margin-top: 22px;
+        }
+
+        .auth-footer a {
+          color: var(--accent);
+          text-decoration: none;
+          font-weight: 600;
+        }
+
+        .auth-footer a:hover { text-decoration: underline; }
+
+        .error-box {
+          font-size: 0.82rem;
+          color: #dc2626;
+          margin-bottom: 14px;
+          padding: 11px 14px;
+          background: var(--error-bg);
+          border: 1px solid var(--error-border);
+          border-radius: 12px;
+          line-height: 1.5;
+        }
+
+        .success-box {
+          font-size: 0.82rem;
+          color: #059669;
+          margin-bottom: 14px;
+          padding: 11px 14px;
+          background: var(--success-bg);
+          border: 1px solid var(--success-border);
+          border-radius: 12px;
+        }
+
         .back-btn {
-          background: none; border: none; color: #9ca3af; font-size: 0.8rem;
-          cursor: pointer; padding: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 4px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          font-size: 0.82rem;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 22px;
+          font-family: inherit;
+          transition: color 0.15s;
         }
-        .back-btn:hover { color: #a855f7; }
+
+        .back-btn:hover { color: var(--accent); }
+
         .otp-input {
-          width: 100%; background: rgba(255,255,255,0.8); border: 2px solid #e8e0f0;
-          border-radius: 12px; padding: 14px 16px; font-size: 1.2rem; color: #1a1a2e;
-          outline: none; transition: border-color 0.15s; box-sizing: border-box;
-          margin-bottom: 12px; text-align: center; letter-spacing: 6px; font-weight: 600;
+          width: 100%;
+          background: var(--input-bg);
+          border: 2px solid var(--input-border);
+          border-radius: 14px;
+          padding: 16px;
+          font-size: 1.8rem;
+          color: var(--text-primary);
+          outline: none;
+          transition: all 0.2s;
+          margin-bottom: 14px;
+          text-align: center;
+          letter-spacing: 12px;
+          font-weight: 700;
+          font-family: 'Courier New', monospace;
         }
-        .otp-input:focus { border-color: #a855f7; }
+
+        .otp-input:focus {
+          border-color: var(--input-focus);
+          box-shadow: 0 0 0 3px rgba(168,85,247,0.1);
+        }
+
+        .choice-card {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 8px;
+        }
+
+        .verified-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.05));
+          border: 2px solid rgba(16,185,129,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.8rem;
+          margin: 0 auto 20px;
+        }
       `}</style>
 
-      <main className="auth-page">
-        <div className="auth-card">
-          <div className="auth-logo">
-            <Image src="/lumora-nebula.png" alt="Lumora" width={32} height={32} className="object-contain" />
-            <span className="auth-logo-text">Lumora</span>
+      <main className="login-root">
+        <div className="login-card">
+          <div className="login-brand">
+            <Image src="/lumora-nebula.png" alt="Lumora" width={40} height={40} className="login-brand-img" />
+            <span className="login-brand-name">Lumora</span>
           </div>
 
           {step === 'login' && (
             <>
-              <h1 className="auth-title">Welcome back</h1>
-              <p className="auth-sub">Log in to continue learning</p>
-              {error && <p className="auth-error">{error}</p>}
+              <h1 className="login-heading" style={{ textAlign: 'center' }}>Welcome back</h1>
+              <p className="login-sub" style={{ textAlign: 'center' }}>Log in to continue learning</p>
+
+              {error && <div className="error-box">{error}</div>}
 
               <button onClick={handleGoogleLogin} className="oauth-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24">
@@ -200,22 +470,44 @@ export default function LoginPage() {
                 Continue with Microsoft
               </button>
 
-              <div className="divider">or</div>
+              <div className="divider-row">
+                <div className="divider-line" />
+                <span className="divider-text">OR</span>
+                <div className="divider-line" />
+              </div>
 
-              <input type="email" placeholder="Email address" value={email}
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                className="auth-input" />
-              <input type="password" placeholder="Password" value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                className="auth-input" />
+              <div className="input-wrap">
+                <input type="email" placeholder="Email address" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                  className="login-input" />
+              </div>
 
-              <span className="forgot-link" onClick={() => { setStep('forgot-email'); setError('') }}>
-                Forgot password?
-              </span>
+              <div className="input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                  className="login-input has-eye"
+                />
+                <button className="eye-btn" onClick={() => setShowPassword(!showPassword)} type="button">
+                  {showPassword ? (
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
 
-              <button onClick={handleLogin} disabled={loading} className="auth-btn">
+              <div className="forgot-row">
+                <span className="forgot-link" onClick={() => { setStep('forgot-email'); setError('') }}>
+                  Forgot password?
+                </span>
+              </div>
+
+              <button onClick={handleLogin} disabled={loading} className="primary-btn">
                 {loading ? 'Logging in...' : 'Log in'}
               </button>
 
@@ -230,14 +522,16 @@ export default function LoginPage() {
               <button className="back-btn" onClick={() => { setStep('login'); setError(''); setMessage('') }}>
                 ← Back
               </button>
-              <h1 className="auth-title">Reset password</h1>
-              <p className="auth-sub">Enter your email and we&apos;ll send you a code</p>
-              {error && <p className="auth-error">{error}</p>}
-              <input type="email" placeholder="Email address" value={email}
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleForgotSendOtp()}
-                className="auth-input" />
-              <button onClick={handleForgotSendOtp} disabled={loading} className="auth-btn">
+              <h1 className="login-heading">Reset password</h1>
+              <p className="login-sub">Enter your email and we&apos;ll send you a code</p>
+              {error && <div className="error-box">{error}</div>}
+              <div className="input-wrap">
+                <input type="email" placeholder="Email address" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleForgotSendOtp()}
+                  className="login-input" />
+              </div>
+              <button onClick={handleForgotSendOtp} disabled={loading} className="primary-btn" style={{ marginTop: '8px' }}>
                 {loading ? 'Sending...' : 'Send OTP'}
               </button>
             </>
@@ -248,45 +542,61 @@ export default function LoginPage() {
               <button className="back-btn" onClick={() => { setStep('forgot-email'); setError(''); setMessage('') }}>
                 ← Back
               </button>
-              <h1 className="auth-title">Enter OTP</h1>
-              <p className="auth-sub">Check your email for the 6-digit code</p>
-              {error && <p className="auth-error">{error}</p>}
-              {message && <p className="auth-message">{message}</p>}
+              <h1 className="login-heading">Enter code</h1>
+              <p className="login-sub">Check your email for the 6-digit code</p>
+              {error && <div className="error-box">{error}</div>}
+              {message && <div className="success-box">{message}</div>}
               <input type="text" placeholder="000000" value={otp}
                 onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
                 className="otp-input" maxLength={6} />
-              <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} className="auth-btn">
-                {loading ? 'Verifying...' : 'Verify OTP'}
+              <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} className="primary-btn">
+                {loading ? 'Verifying...' : 'Verify code'}
               </button>
             </>
           )}
 
           {step === 'reset-choice' && (
-  <>
-    <h1 className="auth-title">You're verified! 🎉</h1>
-    <p className="auth-sub">What would you like to do?</p>
-    {error && <p className="auth-error">{error}</p>}
-    <button onClick={() => router.push('/dashboard')} disabled={loading} className="auth-btn" style={{ marginBottom: '10px' }}>
-      {loading ? 'Logging in...' : 'Log in now'}
-    </button>
-    <button onClick={() => setStep('reset-password')} className="auth-btn" style={{ background: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
-      Set a new password
-    </button>
-  </>
-)}
+            <>
+              <div className="verified-icon">✅</div>
+              <h1 className="login-heading" style={{ textAlign: 'center' }}>You&apos;re verified!</h1>
+              <p className="login-sub" style={{ textAlign: 'center' }}>What would you like to do?</p>
+              {error && <div className="error-box">{error}</div>}
+              <div className="choice-card">
+                <button onClick={() => router.push('/dashboard')} disabled={loading} className="primary-btn">
+                  Log in now
+                </button>
+                <button onClick={() => setStep('reset-password')} className="secondary-btn">
+                  Set a new password
+                </button>
+              </div>
+            </>
+          )}
 
           {step === 'reset-password' && (
             <>
-              <h1 className="auth-title">New password</h1>
-              <p className="auth-sub">Set a new password for your account</p>
-              {error && <p className="auth-error">{error}</p>}
-              <input type="password" placeholder="New password (min 6 characters)" value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
-                className="auth-input" />
-              <button onClick={handleResetPassword} disabled={loading || newPassword.length < 6} className="auth-btn">
-                {loading ? 'Saving...' : 'Set password & continue'}
+              <h1 className="login-heading">New password</h1>
+              <p className="login-sub">Set a new password for your account</p>
+              {error && <div className="error-box">{error}</div>}
+              <div className="input-wrap">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  placeholder="New password (min 6 characters)"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                  className="login-input has-eye"
+                />
+                <button className="eye-btn" onClick={() => setShowNewPassword(!showNewPassword)} type="button">
+                  {showNewPassword ? (
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+              <button onClick={handleResetPassword} disabled={loading || newPassword.length < 6} className="primary-btn" style={{ marginTop: '8px' }}>
+                {loading ? 'Saving...' : 'Set password and continue'}
               </button>
             </>
           )}

@@ -11,10 +11,10 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
 
   const handleGoogleSignup = async () => {
@@ -34,145 +34,381 @@ export default function SignupPage() {
   }
 
   const handleSendOtp = async () => {
-  if (!fullName.trim()) { setError('Please enter your full name'); return }
-  if (!email.trim()) { setError('Please enter your email'); return }
-  setLoading(true)
-  setError('')
-  const res = await fetch('/api/send-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, type: 'signup' })
-  })
-  const data = await res.json()
-  if (!res.ok) { setError(data.error || 'Failed to send OTP'); setLoading(false) }
-  else { setMessage(`OTP sent to ${email}`); setStep('otp'); setLoading(false) }
-}
+    if (!fullName.trim()) { setError('Please enter your full name'); return }
+    if (!email.trim()) { setError('Please enter your email'); return }
+    setLoading(true)
+    setError('')
+    const res = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, type: 'signup' })
+    })
+    const data = await res.json()
+    if (!res.ok) { setError(data.error || 'Failed to send OTP'); setLoading(false) }
+    else { setMessage(`OTP sent to ${email}`); setStep('otp'); setLoading(false) }
+  }
 
   const handleVerifyOtp = async () => {
-  setLoading(true)
-  setError('')
-  const res = await fetch('/api/verify-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, otp, type: 'signup' })
-  })
-  const data = await res.json()
-  if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false) }
-  else { setStep('password'); setLoading(false) }
-}
+    setLoading(true)
+    setError('')
+    const res = await fetch('/api/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, type: 'signup' })
+    })
+    const data = await res.json()
+    if (!res.ok) { setError(data.error || 'Invalid code'); setLoading(false) }
+    else { setStep('password'); setLoading(false) }
+  }
 
   const handleSetPassword = async () => {
-  setLoading(true)
-  setError('')
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName } }
-  })
-  if (error) { setError(error.message); setLoading(false); return }
-  setStep('check-email')
-  setLoading(false)
-}
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } }
+    })
+    if (error) { setError(error.message); setLoading(false); return }
+    setStep('check-email')
+    setLoading(false)
+  }
 
   return (
     <>
       <style>{`
-        .auth-page {
+        :root {
+          --bg-from: #faf5ff;
+          --bg-to: #fdf2f8;
+          --card-bg: rgba(255,255,255,0.82);
+          --card-border: rgba(168,85,247,0.12);
+          --text-primary: #0f0a1e;
+          --text-muted: #9ca3af;
+          --input-bg: rgba(255,255,255,0.9);
+          --input-border: #e5dff5;
+          --input-focus: #a855f7;
+          --divider: #ede9f5;
+          --error-bg: rgba(239,68,68,0.05);
+          --error-border: rgba(239,68,68,0.2);
+          --success-bg: rgba(16,185,129,0.05);
+          --success-border: rgba(16,185,129,0.2);
+          --accent: #a855f7;
+          --accent2: #ec4899;
+        }
+
+        * { box-sizing: border-box; }
+
+        .signup-root {
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 24px;
-          background: linear-gradient(135deg, #faf5ff 0%, #fdf2f8 50%, #f0f9ff 100%);
           font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          background: linear-gradient(135deg, var(--bg-from) 0%, var(--bg-to) 60%, #f0f4ff 100%);
+          position: relative;
+          overflow: hidden;
         }
-        .auth-card {
+
+        .signup-root::before {
+          content: '';
+          position: absolute;
+          width: 600px; height: 600px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 70%);
+          top: -200px; right: -200px;
+          pointer-events: none;
+        }
+
+        .signup-root::after {
+          content: '';
+          position: absolute;
+          width: 400px; height: 400px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(236,72,153,0.06) 0%, transparent 70%);
+          bottom: -100px; left: -100px;
+          pointer-events: none;
+        }
+
+        .signup-card {
           width: 100%;
-          max-width: 420px;
-          background: rgba(255,255,255,0.75);
-          backdrop-filter: blur(20px);
-          border: 1px solid #e8e0f0;
-          border-radius: 24px;
-          padding: 40px;
-          box-shadow: 0 8px 40px rgba(168,85,247,0.08);
+          max-width: 460px;
+          background: var(--card-bg);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid var(--card-border);
+          border-radius: 28px;
+          padding: 44px 40px;
+          box-shadow: 0 8px 48px rgba(168,85,247,0.1), 0 1px 0 rgba(255,255,255,0.8) inset;
+          position: relative;
+          z-index: 1;
         }
-        .auth-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 32px; }
-        .auth-logo-text { font-weight: 700; font-size: 1.1rem; color: #1a1a2e; }
-        .auth-title { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
-        .auth-sub { font-size: 0.875rem; color: #9ca3af; margin-bottom: 28px; }
-        .auth-input {
-          width: 100%; background: rgba(255,255,255,0.8); border: 1px solid #e8e0f0;
-          border-radius: 12px; padding: 12px 16px; font-size: 0.875rem; color: #1a1a2e;
-          outline: none; transition: border-color 0.15s; box-sizing: border-box; margin-bottom: 12px;
+
+        .signup-brand {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          margin-bottom: 36px;
         }
-        .auth-input:focus { border-color: #a855f7; }
-        .auth-input::placeholder { color: #9ca3af; }
-        .auth-btn {
-          width: 100%; padding: 13px;
-          background: linear-gradient(135deg, #a855f7, #ec4899);
-          color: white; font-weight: 600; font-size: 0.9rem; border: none;
-          border-radius: 12px; cursor: pointer; transition: opacity 0.15s; margin-top: 4px;
+
+        .signup-brand-img {
+          width: 40px; height: 40px;
+          border-radius: 12px;
+          object-fit: contain;
+          filter: drop-shadow(0 2px 8px rgba(168,85,247,0.3));
         }
-        .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .auth-btn:hover:not(:disabled) { opacity: 0.9; }
+
+        .signup-brand-name {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: var(--text-primary);
+          letter-spacing: -0.02em;
+        }
+
+        .signup-heading {
+          font-size: 1.4rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          letter-spacing: -0.03em;
+          margin: 0 0 6px 0;
+          line-height: 1.2;
+          text-align: center;
+        }
+
+        .signup-sub {
+          font-size: 0.9rem;
+          color: var(--text-muted);
+          margin: 0 0 28px 0;
+          line-height: 1.5;
+          text-align: center;
+        }
+
         .oauth-btn {
-          width: 100%; padding: 12px; background: white; border: 1px solid #e8e0f0;
-          border-radius: 12px; cursor: pointer; font-size: 0.875rem; font-weight: 500;
-          color: #1a1a2e; display: flex; align-items: center; justify-content: center;
-          gap: 10px; transition: border-color 0.15s, box-shadow 0.15s; margin-bottom: 10px;
-          box-sizing: border-box;
+          width: 100%;
+          padding: 13px 16px;
+          background: white;
+          border: 1.5px solid var(--input-border);
+          border-radius: 14px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          transition: all 0.2s;
+          margin-bottom: 10px;
+          letter-spacing: -0.01em;
         }
-        .oauth-btn:hover { border-color: #a855f7; box-shadow: 0 2px 8px rgba(168,85,247,0.1); }
-        .divider {
-          display: flex; align-items: center; gap: 12px; margin: 18px 0;
-          color: #9ca3af; font-size: 0.8rem;
+
+        .oauth-btn:hover {
+          border-color: var(--accent);
+          box-shadow: 0 4px 16px rgba(168,85,247,0.12);
+          transform: translateY(-1px);
         }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e8e0f0; }
-        .auth-footer { text-align: center; font-size: 0.8rem; color: #9ca3af; margin-top: 20px; }
-        .auth-footer a { color: #a855f7; text-decoration: none; font-weight: 500; }
+
+        .divider-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin: 22px 0;
+        }
+
+        .divider-line { flex: 1; height: 1px; background: var(--divider); }
+
+        .divider-text {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          font-weight: 500;
+          letter-spacing: 0.04em;
+        }
+
+        .input-wrap {
+          position: relative;
+          margin-bottom: 12px;
+        }
+
+        .signup-input {
+          width: 100%;
+          background: var(--input-bg);
+          border: 1.5px solid var(--input-border);
+          border-radius: 14px;
+          padding: 13px 16px;
+          font-size: 0.9rem;
+          color: var(--text-primary);
+          outline: none;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+
+        .signup-input:focus {
+          border-color: var(--input-focus);
+          box-shadow: 0 0 0 3px rgba(168,85,247,0.1);
+        }
+
+        .signup-input::placeholder { color: var(--text-muted); }
+        .signup-input.has-eye { padding-right: 48px; }
+
+        .eye-btn {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--text-muted);
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          transition: color 0.15s;
+        }
+
+        .eye-btn:hover { color: var(--accent); }
+
+        .primary-btn {
+          width: 100%;
+          padding: 14px;
+          background: linear-gradient(135deg, var(--accent), var(--accent2));
+          color: white;
+          font-weight: 700;
+          font-size: 0.95rem;
+          border: none;
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          letter-spacing: -0.01em;
+          box-shadow: 0 4px 16px rgba(168,85,247,0.3);
+          margin-top: 4px;
+        }
+
+        .primary-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 24px rgba(168,85,247,0.4);
+        }
+
+        .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .auth-footer {
+          text-align: center;
+          font-size: 0.82rem;
+          color: var(--text-muted);
+          margin-top: 22px;
+        }
+
+        .auth-footer a {
+          color: var(--accent);
+          text-decoration: none;
+          font-weight: 600;
+        }
+
         .auth-footer a:hover { text-decoration: underline; }
-        .auth-error {
-          font-size: 0.8rem; color: #ef4444; margin-bottom: 12px;
-          padding: 10px 14px; background: rgba(239,68,68,0.06);
-          border: 1px solid rgba(239,68,68,0.15); border-radius: 10px;
+
+        .error-box {
+          font-size: 0.82rem;
+          color: #dc2626;
+          margin-bottom: 14px;
+          padding: 11px 14px;
+          background: var(--error-bg);
+          border: 1px solid var(--error-border);
+          border-radius: 12px;
+          line-height: 1.5;
         }
-        .auth-message {
-          font-size: 0.8rem; color: #10b981; margin-bottom: 12px;
-          padding: 10px 14px; background: rgba(16,185,129,0.06);
-          border: 1px solid rgba(16,185,129,0.15); border-radius: 10px;
+
+        .success-box {
+          font-size: 0.82rem;
+          color: #059669;
+          margin-bottom: 14px;
+          padding: 11px 14px;
+          background: var(--success-bg);
+          border: 1px solid var(--success-border);
+          border-radius: 12px;
         }
+
         .back-btn {
-          background: none; border: none; color: #9ca3af; font-size: 0.8rem;
-          cursor: pointer; padding: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 4px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          font-size: 0.82rem;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 22px;
+          font-family: inherit;
+          transition: color 0.15s;
         }
-        .back-btn:hover { color: #a855f7; }
-        .otp-input {
-          width: 100%; background: rgba(255,255,255,0.8); border: 2px solid #e8e0f0;
-          border-radius: 12px; padding: 14px 16px; font-size: 1.2rem; color: #1a1a2e;
-          outline: none; transition: border-color 0.15s; box-sizing: border-box;
-          margin-bottom: 12px; text-align: center; letter-spacing: 6px; font-weight: 600;
+
+        .back-btn:hover { color: var(--accent); }
+
+        .step-indicator {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 24px;
         }
-        .otp-input:focus { border-color: #a855f7; }
-        .step-indicator { display: flex; gap: 6px; margin-bottom: 24px; }
+
         .step-dot {
-          height: 4px; border-radius: 2px; flex: 1;
-          background: #e8e0f0; transition: background 0.2s;
+          height: 4px;
+          border-radius: 2px;
+          flex: 1;
+          background: #e8e0f0;
+          transition: background 0.2s;
         }
-        .step-dot.active { background: linear-gradient(135deg, #a855f7, #ec4899); }
+
+        .step-dot.active {
+          background: linear-gradient(135deg, var(--accent), var(--accent2));
+        }
+
+        .otp-input {
+          width: 100%;
+          background: var(--input-bg);
+          border: 2px solid var(--input-border);
+          border-radius: 14px;
+          padding: 16px;
+          font-size: 1.8rem;
+          color: var(--text-primary);
+          outline: none;
+          transition: all 0.2s;
+          margin-bottom: 14px;
+          text-align: center;
+          letter-spacing: 12px;
+          font-weight: 700;
+          font-family: 'Courier New', monospace;
+        }
+
+        .otp-input:focus {
+          border-color: var(--input-focus);
+          box-shadow: 0 0 0 3px rgba(168,85,247,0.1);
+        }
+
+        .check-email-icon {
+          width: 72px; height: 72px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(236,72,153,0.08));
+          border: 2px solid rgba(168,85,247,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          margin: 0 auto 20px;
+        }
       `}</style>
 
-      <main className="auth-page">
-        <div className="auth-card">
-          <div className="auth-logo">
-            <Image src="/lumora-nebula.png" alt="Lumora" width={32} height={32} className="object-contain" />
-            <span className="auth-logo-text">Lumora</span>
+      <main className="signup-root">
+        <div className="signup-card">
+          <div className="signup-brand">
+            <Image src="/lumora-nebula.png" alt="Lumora" width={40} height={40} className="signup-brand-img" />
+            <span className="signup-brand-name">Lumora</span>
           </div>
 
           {step === 'details' && (
             <>
-              <h1 className="auth-title">Create your account</h1>
-              <p className="auth-sub">Start learning smarter today — it&apos;s free</p>
-              {error && <p className="auth-error">{error}</p>}
+              <h1 className="signup-heading">Create your account</h1>
+              <p className="signup-sub">Start learning smarter today, it&apos;s free</p>
+              {error && <div className="error-box">{error}</div>}
 
               <button onClick={handleGoogleSignup} className="oauth-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24">
@@ -194,18 +430,27 @@ export default function SignupPage() {
                 Continue with Microsoft
               </button>
 
-              <div className="divider">or</div>
+              <div className="divider-row">
+                <div className="divider-line" />
+                <span className="divider-text">OR</span>
+                <div className="divider-line" />
+              </div>
 
-              <input type="text" placeholder="Full name" value={fullName}
-                onChange={e => setFullName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                className="auth-input" />
-              <input type="email" placeholder="Email address" value={email}
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                className="auth-input" />
+              <div className="input-wrap">
+                <input type="text" placeholder="Full name" value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
+                  className="signup-input" />
+              </div>
 
-              <button onClick={handleSendOtp} disabled={loading} className="auth-btn">
+              <div className="input-wrap">
+                <input type="email" placeholder="Email address" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
+                  className="signup-input" />
+              </div>
+
+              <button onClick={handleSendOtp} disabled={loading} className="primary-btn">
                 {loading ? 'Sending OTP...' : 'Continue'}
               </button>
 
@@ -221,19 +466,19 @@ export default function SignupPage() {
                 ← Back
               </button>
               <div className="step-indicator">
-                <div className="step-dot active"></div>
-                <div className="step-dot active"></div>
-                <div className="step-dot"></div>
+                <div className="step-dot active" />
+                <div className="step-dot active" />
+                <div className="step-dot" />
               </div>
-              <h1 className="auth-title">Verify your email</h1>
-              <p className="auth-sub">Enter the 6-digit code sent to {email}</p>
-              {error && <p className="auth-error">{error}</p>}
-              {message && <p className="auth-message">{message}</p>}
+              <h1 className="signup-heading">Verify your email</h1>
+              <p className="signup-sub">Enter the 6-digit code sent to {email}</p>
+              {error && <div className="error-box">{error}</div>}
+              {message && <div className="success-box">{message}</div>}
               <input type="text" placeholder="000000" value={otp}
                 onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
                 className="otp-input" maxLength={6} />
-              <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} className="auth-btn">
+              <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} className="primary-btn">
                 {loading ? 'Verifying...' : 'Verify'}
               </button>
             </>
@@ -242,36 +487,57 @@ export default function SignupPage() {
           {step === 'password' && (
             <>
               <div className="step-indicator">
-                <div className="step-dot active"></div>
-                <div className="step-dot active"></div>
-                <div className="step-dot active"></div>
+                <div className="step-dot active" />
+                <div className="step-dot active" />
+                <div className="step-dot active" />
               </div>
-              <h1 className="auth-title">Set a password</h1>
-              <p className="auth-sub">Choose a password to secure your account</p>
-              {error && <p className="auth-error">{error}</p>}
-              <input type="password" placeholder="Password (min 6 characters)" value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSetPassword()}
-                className="auth-input" />
-              <button onClick={handleSetPassword} disabled={loading || password.length < 6} className="auth-btn">
+              <h1 className="signup-heading">Set a password</h1>
+              <p className="signup-sub">Choose a password to secure your account</p>
+              {error && <div className="error-box">{error}</div>}
+              <div className="input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password (min 6 characters)"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSetPassword()}
+                  className="signup-input has-eye"
+                />
+                <button className="eye-btn" onClick={() => setShowPassword(!showPassword)} type="button">
+                  {showPassword ? (
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+              <button onClick={handleSetPassword} disabled={loading || password.length < 6} className="primary-btn">
                 {loading ? 'Creating account...' : 'Create account'}
               </button>
             </>
           )}
 
           {step === 'check-email' && (
-  <div style={{ textAlign: 'center' }}>
-    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📧</div>
-    <h1 className="auth-title">Check your email</h1>
-    <p className="auth-sub" style={{ marginBottom: '24px' }}>
-      We sent a confirmation link to <strong style={{ color: '#1a1a2e' }}>{email}</strong>. 
-      Click it to activate your account and get started.
-    </p>
-    <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '12px', padding: '14px 16px', fontSize: '0.8rem', color: '#6b7280' }}>
-      💡 Check your spam folder if you don't see it
-    </div>
-  </div>
-)}
+            <div style={{ textAlign: 'center' }}>
+              <div className="check-email-icon">📧</div>
+              <h1 className="signup-heading">Check your email</h1>
+              <p className="signup-sub" style={{ marginBottom: '24px' }}>
+                We sent a confirmation link to <strong style={{ color: 'var(--text-primary)' }}>{email}</strong>.
+                Click it to activate your account and get started.
+              </p>
+              <div style={{
+                background: 'rgba(168,85,247,0.06)',
+                border: '1px solid rgba(168,85,247,0.15)',
+                borderRadius: '12px',
+                padding: '14px 16px',
+                fontSize: '0.82rem',
+                color: '#6b7280',
+                lineHeight: '1.5'
+              }}>
+                💡 Check your spam folder if you don&apos;t see it
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </>

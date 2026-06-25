@@ -37,15 +37,28 @@ export async function POST(req: NextRequest) {
   }
 
   const subject = type === 'signup' ? 'Your Lumora verification code' : 'Reset your Lumora password'
-  const html = `<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;">
-    <h2 style="color:#1a1a2e;margin-bottom:8px;">${type === 'signup' ? 'Verify your email' : 'Reset your password'}</h2>
-    <p style="color:#6b7280;margin-bottom:24px;">${type === 'signup' ? 'Enter this code to complete your Lumora signup:' : 'Use this code to reset your Lumora password:'}</p>
-    <div style="background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(236,72,153,0.08));border:1px solid rgba(168,85,247,0.2);border-radius:16px;padding:24px;text-align:center;margin-bottom:24px;">
-      <span style="font-size:2.5rem;font-weight:800;letter-spacing:12px;color:#a855f7;">${otp}</span>
+  const html = `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;background:#fafafa;">
+  <div style="background:white;border-radius:20px;padding:40px;border:1px solid #e8e0f0;box-shadow:0 4px 24px rgba(168,85,247,0.06);">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(236,72,153,0.08));border:1px solid rgba(168,85,247,0.15);border-radius:12px;padding:8px 16px;">
+        <span style="font-size:1.1rem;font-weight:800;background:linear-gradient(135deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Lumora</span>
+      </div>
     </div>
-    <p style="color:#9ca3af;font-size:0.85rem;">This code expires in 10 minutes. If you didn't request this, ignore this email.</p>
-    <p style="color:#9ca3af;font-size:0.75rem;margin-top:24px;">Lumora · AI-powered learning</p>
-  </div>`
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,rgba(168,85,247,0.1),rgba(236,72,153,0.1));border:2px solid rgba(168,85,247,0.2);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.8rem;margin-bottom:16px;">${type === 'signup' ? '✉️' : '🔐'}</div>
+      <h1 style="font-size:1.5rem;font-weight:700;color:#1a1a2e;margin:0 0 8px 0;">${type === 'signup' ? 'Verify your email' : 'Reset your password'}</h1>
+      <p style="color:#9ca3af;font-size:0.9rem;margin:0;">${type === 'signup' ? 'Enter this code to complete your Lumora signup' : 'Use this code to reset your Lumora password'}</p>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(168,85,247,0.06),rgba(236,72,153,0.06));border:1px solid rgba(168,85,247,0.15);border-radius:16px;padding:28px;text-align:center;margin-bottom:28px;">
+      <span style="font-size:2.8rem;font-weight:800;letter-spacing:14px;color:#a855f7;">${otp}</span>
+    </div>
+    <p style="color:#9ca3af;font-size:0.78rem;text-align:center;margin:0 0 4px 0;">This code expires in 10 minutes.</p>
+    <p style="color:#9ca3af;font-size:0.78rem;text-align:center;margin:0;">If you didn't request this, ignore this email.</p>
+    <div style="border-top:1px solid #f3f0f8;margin-top:28px;padding-top:20px;text-align:center;">
+      <p style="color:#c4b5d4;font-size:0.72rem;margin:0;">Lumora · AI-powered learning for Sri Lankan students</p>
+    </div>
+  </div>
+</div>`
 
   try {
     await transporter.sendMail({
