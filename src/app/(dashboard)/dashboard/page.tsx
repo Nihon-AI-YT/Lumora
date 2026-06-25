@@ -102,6 +102,31 @@ export default async function DashboardPage() {
           <p className="text-sm" style={{ color: '#9ca3af' }}>Your personal study dashboard.</p>
         </div>
 
+        {/* Email confirmation banner */}
+        {!user?.email_confirmed_at && (
+          <div style={{
+            background: 'rgba(168,85,247,0.08)',
+            border: '1px solid rgba(168,85,247,0.25)',
+            borderRadius: '12px',
+            padding: '12px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>✉️</span>
+              <p style={{ margin: 0, fontSize: '14px', color: '#7c3aed', fontWeight: 500 }}>
+                Please confirm your email address to secure your account.
+              </p>
+            </div>
+            <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>
+              Check your inbox for {user?.email}
+            </p>
+          </div>
+        )}
+
         {/* Widget Zone */}
         <div className="mb-10">
           <WidgetZone streakCount={streakCount} userName={name} />

@@ -130,7 +130,7 @@ export default function ExamPage() {
 
   const generateExam = async (overrideTopic?: string, overrideSubject?: string) => {
     const activeTopic = overrideTopic || pdfText || topic
-    const activeSubject = overrideSubject || subject || 'General'
+    const activeSubject = overrideSubject || subject || ''
     if (!activeTopic) return
     setLoading(true)
     resetSharedState()

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from './Sidebar'
+import NotificationProvider from '@/components/NotificationProvider'
 
 export default async function DashboardLayout({
   children,
@@ -25,7 +26,11 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-screen">
       <Sidebar name={name} userId={user.id} />
-      <main className="flex-1 ml-56 p-8 min-h-screen">
+      <NotificationProvider>
+        <main className="flex-1 ml-56 p-8 min-h-screen">
+          {children}
+        </main>
+      </NotificationProvider><main className="flex-1 ml-56 p-8 min-h-screen">
         {children}
       </main>
     </div>

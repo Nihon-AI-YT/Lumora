@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(req: NextRequest) {
   const { subject, topic, count = 10, difficulty = 'medium', examType = 'mixed' } = await req.json()
 
-  const prompt = `Generate a ${examType} exam with ${count} questions for a student studying ${subject} on the topic: "${topic}".
+  const prompt = `Generate a ${examType} exam with ${count} questions ${subject ? `for a student studying ${subject} on the topic: "${topic}"` : `on the topic: "${topic}"`}
 Difficulty: ${difficulty} (easy = basic recall, medium = application, hard = analysis/deep understanding)
 Exam type: ${examType} (mixed = MCQ + short answer, mcq = multiple choice only, written = short answer only)
 
@@ -12,7 +12,7 @@ Return ONLY a valid JSON object. No markdown, no code blocks. Start with { and e
 Format:
 {
   "title": "exam title",
-  "subject": "${subject}",
+"subject": "${subject || topic}",
   "topic": "${topic}",
   "duration_minutes": 30,
   "questions": [

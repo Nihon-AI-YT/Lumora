@@ -1,10 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
+import { useNotifications } from '@/components/NotificationProvider'
+
 interface Chat {
   id: string
   title: string
@@ -32,6 +34,10 @@ export default function Sidebar({ name, userId }: Props) {
   const [exams, setExams] = useState<{ id: string; name: string; exam_date: string }[]>([])
   const [newExamName, setNewExamName] = useState('')
   const [newExamDate, setNewExamDate] = useState('')
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications()
 
   useEffect(() => {
     if (settingsOpen) loadExams()
@@ -74,6 +80,17 @@ export default function Sidebar({ name, userId }: Props) {
       document.documentElement.setAttribute('data-theme', saved)
     }
   }, [])
+
+  // Close notif panel on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    if (notifOpen) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [notifOpen])
 
   function toggleTheme() {
     const next = theme === 'light' ? 'dark' : 'light'
@@ -142,6 +159,7 @@ export default function Sidebar({ name, userId }: Props) {
     { href: '/mcq', label: 'MCQ Practice' },
     { href: '/exam', label: 'Practice Exam' },
     { href: '/review', label: 'Review' },
+    { href: '/achievements', label: 'Achievements' },
   ]
 
   const dropdown = menuOpen && mounted ? createPortal(
@@ -227,18 +245,12 @@ export default function Sidebar({ name, userId }: Props) {
               disabled
               style={{
                 flex: 1, padding: '10px', borderRadius: '10px', cursor: 'not-allowed',
-                border: '1px solid #e8e0f0',
-                background: 'white',
-                color: '#9ca3af',
-                fontSize: '0.8rem', fontWeight: '600', transition: 'all 0.15s',
-                opacity: 0.4
+                border: '1px solid #e8e0f0', background: 'white', color: '#9ca3af',
+                fontSize: '0.8rem', fontWeight: '600', transition: 'all 0.15s', opacity: 0.4
               }}
             >🌙 Dark (soon)</button>
           </div>
         </div>
-
-        {/* Sign out */}
-        
 
         {/* Sign out */}
         <div style={{ borderTop: '1px solid #e8e0f0', paddingTop: '16px', marginTop: '8px' }}>
@@ -251,6 +263,91 @@ export default function Sidebar({ name, userId }: Props) {
             }}
           >Sign out</button>
         </div>
+      </div>
+    </div>,
+    document.body
+  ) : null
+
+  // Notification panel
+  const notifPanel = notifOpen && mounted ? createPortal(
+    <div
+      ref={notifRef}
+      style={{
+        position: 'fixed', left: '224px', top: '60px',
+        width: '320px', maxHeight: '480px',
+        background: 'white', border: '1px solid #e8e0f0',
+        borderRadius: '16px', boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+        zIndex: 99999, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}
+    >
+      {/* Header */}
+      <div style={{ padding: '16px 18px 12px', borderBottom: '1px solid #f0ebfa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontWeight: 700, fontSize: '14px', color: '#1a1a2e' }}>Notifications</span>
+          {unreadCount > 0 && (
+            <span style={{ background: 'linear-gradient(135deg,#a855f7,#ec4899)', color: 'white', fontSize: '10px', fontWeight: 700, borderRadius: '20px', padding: '1px 7px' }}>
+              {unreadCount}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {unreadCount > 0 && (
+            <button onClick={markAllRead} style={{ fontSize: '11px', color: '#a855f7', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+              Mark all read
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button onClick={clearAll} style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {notifications.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+            <p style={{ fontSize: '28px', marginBottom: '8px' }}>🔔</p>
+            <p style={{ fontSize: '13px', color: '#9ca3af' }}>No notifications yet</p>
+          </div>
+        ) : (
+          notifications.map(n => (
+            <div
+              key={n.id}
+              onClick={() => {
+                markRead(n.id)
+                if (n.link) router.push(n.link)
+                setNotifOpen(false)
+              }}
+              style={{
+                padding: '12px 18px', borderBottom: '1px solid #f9f7ff',
+                display: 'flex', gap: '12px', alignItems: 'flex-start',
+                cursor: n.link ? 'pointer' : 'default',
+                background: n.read ? 'white' : 'rgba(168,85,247,0.04)',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(168,85,247,0.07)')}
+              onMouseLeave={e => (e.currentTarget.style.background = n.read ? 'white' : 'rgba(168,85,247,0.04)')}
+            >
+              <span style={{ fontSize: '20px', flexShrink: 0 }}>{n.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: '0 0 2px', fontSize: '12px', fontWeight: n.read ? 500 : 700, color: '#1a1a2e' }}>
+                  {n.title}
+                </p>
+                <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#9ca3af', lineHeight: 1.4 }}>
+                  {n.message}
+                </p>
+                <p style={{ margin: 0, fontSize: '10px', color: '#c4b5d4' }}>
+                  {new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+              {!n.read && (
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#a855f7', flexShrink: 0, marginTop: '4px' }} />
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>,
     document.body
@@ -379,18 +476,62 @@ export default function Sidebar({ name, userId }: Props) {
           text-align: left;
         }
         .user-btn:hover { background: rgba(168,85,247,0.06); }
+        .bell-btn {
+          position: relative;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 6px 8px;
+          border-radius: 10px;
+          transition: background 0.15s;
+          font-size: 18px;
+          line-height: 1;
+        }
+        .bell-btn:hover { background: rgba(168,85,247,0.08); }
+        .bell-badge {
+          position: absolute;
+          top: 2px;
+          right: 2px;
+          min-width: 16px;
+          height: 16px;
+          background: linear-gradient(135deg, #a855f7, #ec4899);
+          color: white;
+          font-size: 9px;
+          font-weight: 700;
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 3px;
+          border: 2px solid white;
+        }
       `}</style>
 
       {dropdown}
       {settingsModal}
+      {notifPanel}
       {copied && <div className="copied-toast">Link copied to clipboard</div>}
 
       <aside className="sidebar w-56 flex flex-col py-6 px-3 fixed h-full z-10">
 
         {/* Logo */}
-        <div className="flex items-center gap-2 px-3 mb-8">
+        <div className="flex items-center gap-2 px-3 mb-4">
           <Image src="/lumora-nebula.png" alt="Lumora" width={44} height={44} className="object-contain" />
           <span className="font-bold text-xl" style={{ color: '#1a1a2e' }}>Lumora</span>
+        </div>
+
+        {/* Notification Bell */}
+        <div className="px-2 mb-2">
+          <button
+            className="bell-btn"
+            onClick={() => setNotifOpen(prev => !prev)}
+            title="Notifications"
+          >
+            🔔
+            {unreadCount > 0 && (
+              <span className="bell-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+            )}
+          </button>
         </div>
 
         {/* Main nav */}
@@ -442,7 +583,7 @@ export default function Sidebar({ name, userId }: Props) {
           </div>
         </div>
 
-        {/* User — clickable to open settings */}
+        {/* User */}
         <div className="pt-4 px-1" style={{ borderTop: '1px solid #e8e0f0' }}>
           <button className="user-btn" onClick={() => setSettingsOpen(true)}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
