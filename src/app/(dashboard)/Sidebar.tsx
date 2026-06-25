@@ -159,7 +159,6 @@ export default function Sidebar({ name, userId }: Props) {
     { href: '/mcq', label: 'MCQ Practice' },
     { href: '/exam', label: 'Practice Exam' },
     { href: '/review', label: 'Review' },
-    { href: '/achievements', label: 'Achievements' },
   ]
 
   const dropdown = menuOpen && mounted ? createPortal(
@@ -521,24 +520,18 @@ export default function Sidebar({ name, userId }: Props) {
         </div>
 
         {/* Notification Bell */}
-        <div className="px-2 mb-3">
+        <div className="section-label" style={{ marginTop: '8px' }}>Notifications</div>
+        <div className="flex flex-col gap-1 mb-2">
           <button
             onClick={() => setNotifOpen(prev => !prev)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              width: '100%', padding: '9px 12px', borderRadius: '12px',
-              fontSize: '14px', fontWeight: 500, color: '#6b7280',
-              background: 'none', border: '1px solid #e8e0f0', cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#a855f7'; e.currentTarget.style.color = '#9333ea' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e8e0f0'; e.currentTarget.style.color = '#6b7280' }}
+            className={`nav-link ${notifOpen ? 'active' : ''}`}
+            style={{ border: 'none', background: notifOpen ? undefined : 'none', width: '100%', textAlign: 'left' }}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}>
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            <span>Notifications</span>
+            Notifications
             {unreadCount > 0 && (
               <span style={{
                 marginLeft: 'auto', minWidth: '18px', height: '18px',
@@ -552,7 +545,7 @@ export default function Sidebar({ name, userId }: Props) {
         </div>
 
         {/* Main nav */}
-        <div className="section-label">Menu</div>
+        <div className="section-label" style={{ marginTop: '12px' }}>Menu</div>
         <nav className="flex flex-col gap-1">
           {navItems.map(item => (
             <Link key={item.href} href={item.href} className={`nav-link ${pathname === item.href ? 'active' : ''}`}>
