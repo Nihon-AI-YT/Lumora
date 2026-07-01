@@ -434,7 +434,7 @@ export default function Sidebar({ name, userId }: Props) {
             className={`nav-link ${notifOpen ? 'active' : ''}`}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
           >
-            <span>🔔 Notifications</span>
+            <span>Notifications</span>
             {unreadCount > 0 && (
               <span style={{
                 minWidth: '18px', height: '18px',
