@@ -31,46 +31,10 @@ export default function Sidebar({ name, userId }: Props) {
   const [mounted, setMounted] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const [exams, setExams] = useState<{ id: string; name: string; exam_date: string }[]>([])
-  const [newExamName, setNewExamName] = useState('')
-  const [newExamDate, setNewExamDate] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
   const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications()
-
-  useEffect(() => {
-    if (settingsOpen) loadExams()
-  }, [settingsOpen])
-
-  async function loadExams() {
-    const res = await fetch('/api/exams')
-    const data = await res.json()
-    if (data.exams) setExams(data.exams)
-  }
-  async function addExam() {
-    if (!newExamName || !newExamDate) return
-    const res = await fetch('/api/exams', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newExamName, exam_date: newExamDate })
-    })
-    const data = await res.json()
-    if (data.exam) {
-      setExams(prev => [...prev, data.exam].sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()))
-      setNewExamName('')
-      setNewExamDate('')
-    }
-  }
-
-  async function deleteExam(id: string) {
-    await fetch('/api/exams', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    })
-    setExams(prev => prev.filter(e => e.id !== id))
-  }
 
   useEffect(() => {
     setMounted(true)
@@ -81,7 +45,6 @@ export default function Sidebar({ name, userId }: Props) {
     }
   }, [])
 
-  // Close notif panel on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
@@ -92,20 +55,11 @@ export default function Sidebar({ name, userId }: Props) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [notifOpen])
 
-  function toggleTheme() {
-    const next = theme === 'light' ? 'dark' : 'light'
-    setTheme(next)
-    localStorage.setItem('lumora-theme', next)
-    document.documentElement.setAttribute('data-theme', next)
-  }
-
   useEffect(() => { loadChats() }, [pathname])
-
   useEffect(() => {
     const interval = setInterval(loadChats, 3000)
     return () => clearInterval(interval)
   }, [])
-
   useEffect(() => {
     function handleClose() { setMenuOpen(null) }
     document.addEventListener('mousedown', handleClose)
@@ -159,6 +113,7 @@ export default function Sidebar({ name, userId }: Props) {
     { href: '/mcq', label: 'MCQ Practice' },
     { href: '/exam', label: 'Practice Exam' },
     { href: '/review', label: 'Review' },
+    { href: '/achievements', label: 'Achievements' },
   ]
 
   const dropdown = menuOpen && mounted ? createPortal(
@@ -210,8 +165,6 @@ export default function Sidebar({ name, userId }: Props) {
           <h2 style={{ fontSize: '1rem', fontWeight: '700', color: '#1a1a2e', margin: 0 }}>Settings</h2>
           <button onClick={() => setSettingsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '1.2rem' }}>✕</button>
         </div>
-
-        {/* Plan */}
         <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -225,8 +178,6 @@ export default function Sidebar({ name, userId }: Props) {
             }}>Upgrade to Pro</button>
           </div>
         </div>
-
-        {/* Theme */}
         <div style={{ marginBottom: '16px' }}>
           <p style={{ fontSize: '0.72rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9ca3af', marginBottom: '10px' }}>Appearance</p>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -240,18 +191,13 @@ export default function Sidebar({ name, userId }: Props) {
                 fontSize: '0.8rem', fontWeight: '600', transition: 'all 0.15s'
               }}
             >☀️ Light</button>
-            <button
-              disabled
-              style={{
-                flex: 1, padding: '10px', borderRadius: '10px', cursor: 'not-allowed',
-                border: '1px solid #e8e0f0', background: 'white', color: '#9ca3af',
-                fontSize: '0.8rem', fontWeight: '600', transition: 'all 0.15s', opacity: 0.4
-              }}
-            >🌙 Dark (soon)</button>
+            <button disabled style={{
+              flex: 1, padding: '10px', borderRadius: '10px', cursor: 'not-allowed',
+              border: '1px solid #e8e0f0', background: 'white', color: '#9ca3af',
+              fontSize: '0.8rem', fontWeight: '600', opacity: 0.4
+            }}>🌙 Dark (soon)</button>
           </div>
         </div>
-
-        {/* Sign out */}
         <div style={{ borderTop: '1px solid #e8e0f0', paddingTop: '16px', marginTop: '8px' }}>
           <button
             onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
@@ -267,7 +213,6 @@ export default function Sidebar({ name, userId }: Props) {
     document.body
   ) : null
 
-  // Notification panel
   const notifPanel = notifOpen && mounted ? createPortal(
     <div
       ref={notifRef}
@@ -279,7 +224,6 @@ export default function Sidebar({ name, userId }: Props) {
         zIndex: 99999, display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}
     >
-      {/* Header */}
       <div style={{ padding: '16px 18px 12px', borderBottom: '1px solid #f0ebfa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontWeight: 700, fontSize: '14px', color: '#1a1a2e' }}>Notifications</span>
@@ -302,8 +246,6 @@ export default function Sidebar({ name, userId }: Props) {
           )}
         </div>
       </div>
-
-      {/* List */}
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {notifications.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center' }}>
@@ -314,11 +256,7 @@ export default function Sidebar({ name, userId }: Props) {
           notifications.map(n => (
             <div
               key={n.id}
-              onClick={() => {
-                markRead(n.id)
-                if (n.link) router.push(n.link)
-                setNotifOpen(false)
-              }}
+              onClick={() => { markRead(n.id); if (n.link) router.push(n.link); setNotifOpen(false) }}
               style={{
                 padding: '12px 18px', borderBottom: '1px solid #f9f7ff',
                 display: 'flex', gap: '12px', alignItems: 'flex-start',
@@ -331,19 +269,13 @@ export default function Sidebar({ name, userId }: Props) {
             >
               <span style={{ fontSize: '20px', flexShrink: 0 }}>{n.icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: '0 0 2px', fontSize: '12px', fontWeight: n.read ? 500 : 700, color: '#1a1a2e' }}>
-                  {n.title}
-                </p>
-                <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#9ca3af', lineHeight: 1.4 }}>
-                  {n.message}
-                </p>
+                <p style={{ margin: '0 0 2px', fontSize: '12px', fontWeight: n.read ? 500 : 700, color: '#1a1a2e' }}>{n.title}</p>
+                <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#9ca3af', lineHeight: 1.4 }}>{n.message}</p>
                 <p style={{ margin: 0, fontSize: '10px', color: '#c4b5d4' }}>
                   {new Date(n.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
-              {!n.read && (
-                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#a855f7', flexShrink: 0, marginTop: '4px' }} />
-              )}
+              {!n.read && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#a855f7', flexShrink: 0, marginTop: '4px' }} />}
             </div>
           ))
         )}
@@ -370,6 +302,11 @@ export default function Sidebar({ name, userId }: Props) {
           color: #6b7280;
           text-decoration: none;
           transition: background 0.15s, color 0.15s;
+          cursor: pointer;
+          border: none;
+          width: 100%;
+          text-align: left;
+          background: none;
         }
         .nav-link:hover, .nav-link.active {
           background: rgba(168,85,247,0.09);
@@ -447,7 +384,7 @@ export default function Sidebar({ name, userId }: Props) {
           color: #c4b5d4;
           padding: 0 12px;
           margin-bottom: 4px;
-          margin-top: 16px;
+          margin-top: 20px;
         }
         .copied-toast {
           position: fixed;
@@ -475,35 +412,6 @@ export default function Sidebar({ name, userId }: Props) {
           text-align: left;
         }
         .user-btn:hover { background: rgba(168,85,247,0.06); }
-        .bell-btn {
-          position: relative;
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 6px 8px;
-          border-radius: 10px;
-          transition: background 0.15s;
-          font-size: 18px;
-          line-height: 1;
-        }
-        .bell-btn:hover { background: rgba(168,85,247,0.08); }
-        .bell-badge {
-          position: absolute;
-          top: 2px;
-          right: 2px;
-          min-width: 16px;
-          height: 16px;
-          background: linear-gradient(135deg, #a855f7, #ec4899);
-          color: white;
-          font-size: 9px;
-          font-weight: 700;
-          border-radius: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0 3px;
-          border: 2px solid white;
-        }
       `}</style>
 
       {dropdown}
@@ -514,27 +422,22 @@ export default function Sidebar({ name, userId }: Props) {
       <aside className="sidebar w-56 flex flex-col py-6 px-3 fixed h-full z-10">
 
         {/* Logo */}
-        <div className="flex items-center gap-2 px-3 mb-4">
-          <Image src="/lumora-nebula.png" alt="Lumora" width={44} height={44} className="object-contain" />
-          <span className="font-bold text-xl" style={{ color: '#1a1a2e' }}>Lumora</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', marginBottom: '28px' }}>
+          <Image src="/lumora-nebula.png" alt="Lumora" width={36} height={36} className="object-contain" style={{ flexShrink: 0 }} />
+          <span style={{ fontWeight: 800, fontSize: '1.2rem', color: '#1a1a2e' }}>Lumora</span>
         </div>
 
-        {/* Notification Bell */}
-        <div className="section-label" style={{ marginTop: '8px' }}>Notifications</div>
-        <div className="flex flex-col gap-1 mb-2">
+        {/* Notifications */}
+        <div className="flex flex-col gap-1 mb-6">
           <button
             onClick={() => setNotifOpen(prev => !prev)}
             className={`nav-link ${notifOpen ? 'active' : ''}`}
-            style={{ border: 'none', background: notifOpen ? undefined : 'none', width: '100%', textAlign: 'left' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}>
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            Notifications
+            <span>🔔 Notifications</span>
             {unreadCount > 0 && (
               <span style={{
-                marginLeft: 'auto', minWidth: '18px', height: '18px',
+                minWidth: '18px', height: '18px',
                 background: 'linear-gradient(135deg, #a855f7, #ec4899)',
                 color: 'white', fontSize: '10px', fontWeight: 700,
                 borderRadius: '20px', display: 'flex', alignItems: 'center',
@@ -545,7 +448,7 @@ export default function Sidebar({ name, userId }: Props) {
         </div>
 
         {/* Main nav */}
-        <div className="section-label" style={{ marginTop: '12px' }}>Menu</div>
+        <div className="section-label" style={{ marginTop: '0' }}>Menu</div>
         <nav className="flex flex-col gap-1">
           {navItems.map(item => (
             <Link key={item.href} href={item.href} className={`nav-link ${pathname === item.href ? 'active' : ''}`}>
