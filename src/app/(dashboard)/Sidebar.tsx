@@ -423,8 +423,8 @@ export default function Sidebar({ name, userId }: Props) {
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 12px', marginBottom: '28px' }}>
-          <Image src="/lumora-nebula.png" alt="Lumora" width={36} height={36} className="object-contain" style={{ flexShrink: 0 }} />
-          <span style={{ fontWeight: 800, fontSize: '1.2rem', color: '#1a1a2e' }}>Lumora</span>
+          <Image src="/lumora-nebula.png" alt="Lumora" width={40} height={40} className="object-contain" style={{ flexShrink: 0 }} />
+          <span style={{ fontWeight: 800, fontSize: '1.35rem', color: '#1a1a2e' }}>Lumora</span>
         </div>
 
         {/* Notifications */}
