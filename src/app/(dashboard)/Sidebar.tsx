@@ -113,7 +113,6 @@ export default function Sidebar({ name, userId }: Props) {
     { href: '/mcq', label: 'MCQ Practice' },
     { href: '/exam', label: 'Practice Exam' },
     { href: '/review', label: 'Review' },
-    { href: '/achievements', label: 'Achievements' },
   ]
 
   const dropdown = menuOpen && mounted ? createPortal(
