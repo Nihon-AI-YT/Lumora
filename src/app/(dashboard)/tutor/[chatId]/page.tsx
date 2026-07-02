@@ -151,7 +151,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [profile, setProfile] = useState<{ full_name: string, age: number, level: string, streak_count?: number, exams?: { name: string, exam_date: string, priority: string }[], weakTopics?: { subject: string, topic: string, score: number, total: number }[], minutesToday?: number } | null>(null)
+  const [profile, setProfile] = useState<{ full_name: string, age: number, education_level: string, streak_count?: number, exams?: { name: string, exam_date: string, priority: string }[], weakTopics?: { subject: string, topic: string, score: number, total: number }[], minutesToday?: number } | null>(null)
   const [subjects, setSubjects] = useState<{ id: string; name: string; topics: { id: string; name: string }[] }[]>([])
   const [saveModal, setSaveModal] = useState<{ content: string } | null>(null)
   const [saveSubjectId, setSaveSubjectId] = useState('')
@@ -211,7 +211,7 @@ export default function ChatPage() {
   async function loadProfile() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
-  const { data } = await supabase.from('profiles').select('full_name, age, level, streak_count').eq('id', user.id).single()
+  const { data } = await supabase.from('profiles').select('full_name, age, education_level, streak_count').eq('id', user.id).single()
   const { data: exams } = await supabase.from('exams').select('name, exam_date, priority').eq('user_id', user.id).order('exam_date', { ascending: true })
   
   // Get weak topics from mcq_attempts (last 30 days, score < 70%)
@@ -469,7 +469,7 @@ export default function ChatPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-1" style={{ color: '#1a1a2e' }}>AI Tutor</h1>
           <p className="text-sm" style={{ color: '#9ca3af' }}>
-            {profile ? `Personalized for ${profile.full_name} · ${profile.level}` : 'Ask anything — get clear, step-by-step explanations'}
+            {profile ? `Personalized for ${profile.full_name} · ${profile.education_level}` : 'Ask anything — get clear, step-by-step explanations'}
           </p>
         </div>
 

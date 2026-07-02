@@ -31,7 +31,7 @@ export default function OnboardingPage() {
     if (!user) { router.push('/login'); return }
     const { error: err } = await supabase
       .from('profiles')
-      .update({ full_name: name.trim(), age: parseInt(age) || null, level, onboarded: true })
+      .update({ full_name: name.trim(), age: parseInt(age) || null, education_level: level, onboarded: true })
       .eq('id', user.id)
     if (err) {
       setError('Something went wrong. Try again.')

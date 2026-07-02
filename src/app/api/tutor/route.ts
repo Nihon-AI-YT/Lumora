@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
 
   const name = profile?.full_name?.split(' ')[0] || 'the student'
   const age = profile?.age || 'unknown'
-  const level = profile?.level || 'High School'
+  const level = profile?.education_level || 'High School'
   const exams = profile?.exams || []
   const weakTopics = profile?.weakTopics || []
   const streakCount = profile?.streak_count || 0
