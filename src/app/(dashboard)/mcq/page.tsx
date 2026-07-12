@@ -40,6 +40,21 @@ export default function MCQPage() {
     }
   }, [])
 
+  async function awardXP(action: string, metadata: Record<string, any> = {}) {
+    try {
+      await fetch('/api/xp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          metadata: { ...metadata, localHour: new Date().getHours(), localDay: new Date().getDay() }
+        })
+      })
+    } catch (err) {
+      console.error('XP award failed:', err)
+    }
+  }
+
   const generateDrillQuestions = async (drillTopic: string, drillSubject: string) => {
     setLoading(true)
     setQuestions([])
@@ -196,6 +211,10 @@ export default function MCQPage() {
           wrong_questions: wrongQuestions,
           source: isDrillMode ? 'drill' : 'practice'
         })
+        await awardXP('mcq_session_complete')
+        if (questions.length > 0 && s / questions.length >= 0.8) {
+          await awardXP('mcq_score_80', { perfect: s === questions.length })
+        }
       }
     } catch (err) {
       console.error('Failed to save attempt:', err)
