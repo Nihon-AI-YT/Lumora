@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 interface MCQQuestion {
   id: number
@@ -46,6 +47,25 @@ async function awardXP(action: string, metadata: Record<string, any> = {}) {
     })
   } catch (err) {
     console.error('XP award failed:', err)
+  }
+}
+
+async function saveExamAttempt(subject: string, topic: string, mcqCorrect: number, mcqCount: number) {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('mcq_attempts').insert({
+      user_id: user.id,
+      subject: subject || 'General',
+      topic: topic.slice(0, 100) || 'Exam',
+      score: mcqCorrect,
+      total: mcqCount,
+      wrong_questions: [],
+      source: 'exam'
+    })
+  } catch (err) {
+    console.error('Failed to save exam attempt:', err)
   }
 }
 
@@ -255,6 +275,7 @@ export default function ExamPage() {
     setScore(total)
     setSubmitted(true)
     setTimerActive(false)
+    saveExamAttempt(subject || ppSubject, topic, mcqCorrect, mcqCount)
     awardXP('exam_complete')
     if (mcqCount > 0 && mcqCorrect / mcqCount >= 0.8) {
       awardXP('exam_score_80', { perfect: mcqCorrect === mcqCount })
