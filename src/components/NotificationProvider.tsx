@@ -146,9 +146,13 @@ export default function NotificationProvider({ children }: { children: React.Rea
     }
   }, [fetchNotifications])
 
-  // Initial fetch
+  // Initial fetch, then poll every 20s as a fallback in case Realtime
+  // isn't picking up inserts from pages that call /api/xp directly
+  // instead of through this context's awardXP.
   useEffect(() => {
     fetchNotifications()
+    const interval = setInterval(fetchNotifications, 20000)
+    return () => clearInterval(interval)
   }, [fetchNotifications])
 
   // Supabase realtime subscription
