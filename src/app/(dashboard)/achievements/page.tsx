@@ -74,6 +74,19 @@ const RANK_LADDER = [
   { rank: 'Challenger', minLevel: 100 },
 ]
 
+// Lightens (positive percent) or darkens (negative) a hex color — used to
+// build the crest's bevel gradient dynamically per rank color.
+function shadeColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16)
+  let r = (num >> 16) + percent
+  let g = ((num >> 8) & 0x00ff) + percent
+  let b = (num & 0x0000ff) + percent
+  r = Math.max(Math.min(255, r), 0)
+  g = Math.max(Math.min(255, g), 0)
+  b = Math.max(Math.min(255, b), 0)
+  return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)
+}
+
 // Counts XP up from 0 on mount instead of just appearing — small but makes
 // the number feel earned rather than static.
 function useCountUp(target: number, durationMs = 1100) {
@@ -169,21 +182,41 @@ export default function AchievementsPage() {
           padding: 28px;
           animation: fadeSlideUp 0.5s ease both;
         }
-        .rank-crest {
+        .rank-crest-wrap {
           position: relative;
-          width: 76px; height: 84px;
-          clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-          display: flex; align-items: center; justify-content: center;
+          width: 84px; height: 92px;
           flex-shrink: 0;
-          overflow: hidden;
+        }
+        .rank-crest-glow {
+          position: absolute;
+          inset: -8px;
+          clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+          filter: blur(16px);
+          opacity: 0.5;
           animation: pulseGlow 2.4s ease-in-out infinite;
         }
-        .rank-crest::after {
+        .rank-crest-ring {
+          position: relative;
+          width: 100%; height: 100%;
+          clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+          display: flex; align-items: center; justify-content: center;
+          padding: 4px;
+          box-shadow: inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -3px 7px rgba(0,0,0,0.3);
+        }
+        .rank-crest-face {
+          position: relative;
+          width: 100%; height: 100%;
+          clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden;
+          box-shadow: inset 0 3px 6px rgba(255,255,255,0.4), inset 0 -6px 12px rgba(0,0,0,0.32);
+        }
+        .rank-crest-face::after {
           content: '';
           position: absolute;
           top: -20%; left: -60%;
           width: 40%; height: 140%;
-          background: rgba(255,255,255,0.55);
+          background: rgba(255,255,255,0.5);
           animation: crestShine 3.2s ease-in-out infinite;
           animation-delay: 0.6s;
         }
@@ -273,6 +306,7 @@ export default function AchievementsPage() {
           margin-bottom: 8px;
           display: inline-block;
           transition: transform 0.2s;
+          font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
         }
         .badge-card.earned:hover .badge-icon {
           transform: scale(1.15) rotate(-4deg);
@@ -293,10 +327,15 @@ export default function AchievementsPage() {
 
             {/* Rank crest */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '220px' }}>
-              <div className="rank-crest" style={{ background: `linear-gradient(135deg, ${data.rank.color}, ${data.rank.color}cc)` }}>
-                <span style={{ fontSize: '22px', fontWeight: 800, color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.25)', zIndex: 1 }}>
-                  {data.level.level}
-                </span>
+              <div className="rank-crest-wrap">
+                <div className="rank-crest-glow" style={{ background: data.rank.color }} />
+                <div className="rank-crest-ring" style={{ background: `linear-gradient(160deg, ${shadeColor(data.rank.color, 60)}, ${shadeColor(data.rank.color, -50)})` }}>
+                  <div className="rank-crest-face" style={{ background: `linear-gradient(155deg, ${shadeColor(data.rank.color, 40)} 0%, ${data.rank.color} 55%, ${shadeColor(data.rank.color, -35)} 100%)` }}>
+                    <span style={{ fontSize: '22px', fontWeight: 800, color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.3)', zIndex: 1 }}>
+                      {data.level.level}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: data.rank.color }}>Rank</p>
