@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import WidgetZone from '@/components/dashboard/WidgetZone'
+import DailyLoginXP from '@/components/dashboard/DailyLoginXP'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -39,7 +40,9 @@ export default async function DashboardPage() {
     newStreak = (streakRes.data?.streak_count || 0) + 1
   }
 
-  if (!lastActive || lastActive.getTime() !== today.getTime()) {
+  const isNewDay = !lastActive || lastActive.getTime() !== today.getTime()
+
+  if (isNewDay) {
     await supabaseClient
       .from('profiles')
       .update({ streak_count: newStreak, last_active: todayStr })
@@ -126,6 +129,8 @@ export default async function DashboardPage() {
             </p>
           </div>
         )}
+
+        <DailyLoginXP isNewDay={isNewDay} />
 
         {/* Widget Zone */}
         <div className="mb-10">
