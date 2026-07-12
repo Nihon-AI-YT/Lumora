@@ -66,7 +66,7 @@ export default function NotificationProvider({ children }: { children: React.Rea
             addToast({ id: n.id, title: n.title, message: n.message, icon: n.icon, link: n.link })
             if (n.type === 'level_up') {
               setLevelUpData({ level: n.title.replace("Level Up! You're now ", '') })
-              setTimeout(() => setLevelUpData(null), 4000)
+              setTimeout(() => setLevelUpData(null), 6000)
             }
           })
         }
@@ -83,7 +83,7 @@ export default function NotificationProvider({ children }: { children: React.Rea
     setToasts(prev => [...prev, toast])
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== toast.id))
-    }, 4000)
+    }, 6000)
   }
 
   const markRead = async (id: string) => {
@@ -136,7 +136,7 @@ export default function NotificationProvider({ children }: { children: React.Rea
 
       if (data.leveledUp) {
         setLevelUpData({ level: data.level.name })
-        setTimeout(() => setLevelUpData(null), 4000)
+        setTimeout(() => setLevelUpData(null), 6000)
       }
 
       // Refresh notifications after XP award
