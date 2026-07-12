@@ -21,6 +21,21 @@ const PRESETS = [
   },
 ]
 
+async function awardXP(action: string, metadata: Record<string, any> = {}) {
+  try {
+    await fetch('/api/xp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        metadata: { ...metadata, localHour: new Date().getHours(), localDay: new Date().getDay() }
+      })
+    })
+  } catch (err) {
+    console.error('XP award failed:', err)
+  }
+}
+
 export default function PomodoroWidget() {
   const [workMins, setWorkMins] = useState(25)
   const [breakMins, setBreakMins] = useState(5)
@@ -50,6 +65,7 @@ export default function PomodoroWidget() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ minutes: workMins, session_type: 'pomodoro' })
               })
+              awardXP('pomodoro_complete')
               setSessions(s => s + 1)
               setMode('break')
               setSecondsLeft(breakMins * 60)
