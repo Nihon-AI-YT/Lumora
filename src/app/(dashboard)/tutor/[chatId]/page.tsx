@@ -144,6 +144,21 @@ function AIBubble({ content, onSave }: { content: string, onSave?: () => void })
   )
 }
 
+async function awardXP(action: string, metadata: Record<string, any> = {}) {
+  try {
+    await fetch('/api/xp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        metadata: { ...metadata, localHour: new Date().getHours(), localDay: new Date().getDay() }
+      })
+    })
+  } catch (err) {
+    console.error('XP award failed:', err)
+  }
+}
+
 export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>()
   const router = useRouter()
@@ -300,6 +315,7 @@ export default function ChatPage() {
       const aiMessage: Message = { role: 'assistant', content: replyText }
       setMessages([...updated, aiMessage])
       await supabase.from('tutor_messages').insert([{ chat_id: chatId, role: 'user', content: displayContent }, { chat_id: chatId, role: 'assistant', content: replyText }])
+      awardXP('tutor_message', { chatId })
       const userMsgCount = updated.filter(m => m.role === 'user').length
       if (userMsgCount === 1) {
         const title = await generateTitle(input)
