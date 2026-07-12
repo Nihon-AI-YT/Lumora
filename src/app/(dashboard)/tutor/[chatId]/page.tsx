@@ -216,7 +216,7 @@ export default function ChatPage() {
   async function saveNoteToTopic() {
     if (!saveModal || !saveTopicId) return
     setSaving(true)
-    await fetch('/api/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic_id: saveTopicId, type: 'ai', content: saveModal.content }) })
+    await fetch('/api/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic_id: saveTopicId, type: 'ai', content: saveModal.content, local_hour: new Date().getHours(), local_day: new Date().getDay() }) })
     setSaving(false)
     setSaveModal(null)
     setSaveSubjectId('')

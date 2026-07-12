@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { topic_id, type, content } = await req.json()
+  const { topic_id, type, content, local_hour, local_day } = await req.json()
   if (!topic_id || !type || !content) return NextResponse.json({ error: 'topic_id, type and content required' }, { status: 400 })
 
   const { data, error } = await supabase
@@ -35,9 +35,24 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  try {
+    await fetch(`${req.nextUrl.origin}/api/xp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: req.headers.get('cookie') || '' },
+      body: JSON.stringify({
+        action: 'add_notes',
+        metadata: typeof local_hour === 'number' && typeof local_day === 'number'
+          ? { localHour: local_hour, localDay: local_day }
+          : {}
+      })
+    })
+  } catch (err) {
+    console.error('XP award failed:', err)
+  }
+
   return NextResponse.json({ note: data })
 }
-
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
