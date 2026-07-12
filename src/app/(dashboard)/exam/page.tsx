@@ -34,6 +34,21 @@ interface Exam {
 
 type Tab = 'generate' | 'pastpaper'
 
+async function awardXP(action: string, metadata: Record<string, any> = {}) {
+  try {
+    await fetch('/api/xp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        metadata: { ...metadata, localHour: new Date().getHours(), localDay: new Date().getDay() }
+      })
+    })
+  } catch (err) {
+    console.error('XP award failed:', err)
+  }
+}
+
 export default function ExamPage() {
   const [activeTab, setActiveTab] = useState<Tab>('generate')
 
@@ -91,12 +106,19 @@ export default function ExamPage() {
             if (currentExam) {
               setAnswers(currentAnswers => {
                 let total = 0
+                let mcqCorrect = 0
+                let mcqCount = 0
                 currentExam.questions.forEach(q => {
-                  if (q.type === 'mcq' && currentAnswers[q.id] === (q as MCQQuestion).correct) {
-                    total += q.marks
+                  if (q.type === 'mcq') {
+                    mcqCount++
+                    if (currentAnswers[q.id] === (q as MCQQuestion).correct) { total += q.marks; mcqCorrect++ }
                   }
                 })
                 setScore(total)
+                awardXP('exam_complete')
+                if (mcqCount > 0 && mcqCorrect / mcqCount >= 0.8) {
+                  awardXP('exam_score_80', { perfect: mcqCorrect === mcqCount })
+                }
                 return currentAnswers
               })
             }
@@ -222,12 +244,21 @@ export default function ExamPage() {
   const handleSubmit = () => {
     if (!exam) return
     let total = 0
+    let mcqCorrect = 0
+    let mcqCount = 0
     exam.questions.forEach(q => {
-      if (q.type === 'mcq' && answers[q.id] === (q as MCQQuestion).correct) total += q.marks
+      if (q.type === 'mcq') {
+        mcqCount++
+        if (answers[q.id] === (q as MCQQuestion).correct) { total += q.marks; mcqCorrect++ }
+      }
     })
     setScore(total)
     setSubmitted(true)
     setTimerActive(false)
+    awardXP('exam_complete')
+    if (mcqCount > 0 && mcqCorrect / mcqCount >= 0.8) {
+      awardXP('exam_score_80', { perfect: mcqCorrect === mcqCount })
+    }
   }
 
   const resetExam = () => {
